@@ -11,8 +11,7 @@
 #include "User.h"
 #include "Nick.h"
 #include "Modules.h"
-#include "Chan.h"
-#include <ctype.h>
+#include "Chan.h" 
 
 typedef map<const CString, VCString> TSettings;
 
@@ -40,16 +39,16 @@ public:
 	EModRet OnPrivMsg(CNick& Nick, CString& sMessage);
 	EModRet OnChanMsg(CNick& Nick, CChan& Channel, CString& sMessage);
 	void OnModCommand(const CString& sCommand);
+	void CheckLineForLink(const CString& sMessage, const CString& sChannel, const CString& sNick);
+	void CheckLineForTrigger(const CString& sMessage, const CString& sChannel, const CString& sNick);
 };
 
-bool CUrlBufferModule::OnLoad(const CString& sArgs, CString& sErrorMsg) { 
-	//load settings from file
+bool CUrlBufferModule::OnLoad(const CString& sArgs, CString& sErrorMsg) {
+	LoadSettings();
 	return true;
 }
 
-CUrlBufferModule::~CUrlBufferModule() {
-	PutModule("I'm being unloaded!");
-}
+CUrlBufferModule::~CUrlBufferModule() {}
 
 CUrlBufferModule::EModRet CUrlBufferModule::OnBroadcast(CString& sMessage) {
 	PutModule("------ [" + sMessage + "]");
@@ -144,18 +143,24 @@ void CUrlBufferModule::SaveSettings() {
 
 void CUrlBufferModule::LoadSettings() {
 	for(MCString::iterator it = BeginNV(); it != EndNV(); it++) {
-		if(it->first.Left(5) == "chan:") {
+		if(it->first == "setting1") {
 			const CString sChanName = it->first.substr(5); 
-
 			CString right = it->second; 
-			while(true) {
-				if(right == "enable") {
-					settings[sChanName].push_back(right);
-				} 
-			}
+			settings[sChanName].push_back(right);
 		}
 	}
 }
 
+void CheckLineForLink(const CString& sMessage, const CString& sChannel, const CString& sNick){
+	//search for link (image link for start)
+	//if you find one download it, save it in the www directory and keep new link in buffer
+}
 
+void CheckLineForTrigger(const CString& sMessage, const CString& sChannel, const CString& sNick){
+	//search for trigger in message
+	//if one is found
+	//return the last x buffered links
+}
+	
 MODULEDEFS(CUrlBufferModule, "Module that caches images from links posted on irc channels.")
+
