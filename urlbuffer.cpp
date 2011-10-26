@@ -1,12 +1,17 @@
 /* Copyright (C) 2011 uberspot
  *
  * Compiling: znc-buildmod urlbuffer.cpp
+ * Api key: 5ce86e7f95d8e58b18931bf290f387be
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 3 as published
  * by the Free Software Foundation (http://www.gnu.org/licenses/gpl.txt).
 */ 
 
+#define CURL_STATICLIB 
+#include <curl/curl.h>
+/* #include <curl/types.h> // removed in arch linux */
+#include <curl/easy.h>
 #include "main.h"
 #include "User.h"
 #include "Nick.h"
@@ -14,13 +19,18 @@
 #include "Chan.h" 
 
 typedef map<const CString, VCString> TSettings;
+typedef vector<CString> SUrls;
 
 class CUrlBufferModule : public CModule {
 private: 
 	TSettings settings;
+	SUrls lastUrls; 
 	
 	void SaveSettings();
 	void LoadSettings();
+	size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream);
+	void CheckLineForLink(const CString& sMessage, const CString& sChannel, const CString& sNick);
+	void CheckLineForTrigger(const CString& sMessage, const CString& sChannel, const CString& sNick); 
 	
 public:
 	MODCONSTRUCTOR(CUrlBufferModule) {}
@@ -39,8 +49,6 @@ public:
 	EModRet OnPrivMsg(CNick& Nick, CString& sMessage);
 	EModRet OnChanMsg(CNick& Nick, CChan& Channel, CString& sMessage);
 	void OnModCommand(const CString& sCommand);
-	void CheckLineForLink(const CString& sMessage, const CString& sChannel, const CString& sNick);
-	void CheckLineForTrigger(const CString& sMessage, const CString& sChannel, const CString& sNick);
 };
 
 bool CUrlBufferModule::OnLoad(const CString& sArgs, CString& sErrorMsg) {
@@ -143,24 +151,55 @@ void CUrlBufferModule::SaveSettings() {
 
 void CUrlBufferModule::LoadSettings() {
 	for(MCString::iterator it = BeginNV(); it != EndNV(); it++) {
-		if(it->first == "setting1") {
-			const CString sChanName = it->first.substr(5); 
+		if(it->first == "settingbla") {
+			CString sChanName = it->first; 
 			CString right = it->second; 
 			settings[sChanName].push_back(right);
 		}
 	}
 }
 
-void CheckLineForLink(const CString& sMessage, const CString& sChannel, const CString& sNick){
-	//search for link (image link for start)
-	//if you find one download it, save it in the www directory and keep new link in buffer
+void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& sChannel, const CString& sNick){
+	VCString words;
+	CString space = " ", empty="";
+	sMessage.Split(space, words, false, empty, empty, true, true);
+	for (size_t a = 0; a < words.size(); a++) {
+			const CString& word = words[a];
+			if(word.Left(4) == "http"){
+				//if you find one download it, save it in the www directory and keep new link in buffer ;
+				CURL *curl;
+				const char *url = word.c_str();
+				FILE *fp;
+				CURLcode res; 
+				char outfilename[FILENAME_MAX] = "/var/www/urlbuffer/temp";
+				curl = curl_easy_init();
+				if (curl) {
+					fp = fopen(outfilename,"wb");
+					curl_easy_setopt(curl, CURLOPT_URL, url ); //link 
+					curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &CUrlBufferModule::write_data);
+					curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+					res = curl_easy_perform(curl);
+					curl_easy_cleanup(curl);
+					fclose(fp);
+				}
+				lastUrls.push_back("http://uberspot.ath.cx/urlbuffer/" + word);
+				//reupload on imgur curl -F "image=@file.png" -F "key=YOUR_API_KEY" http://api.imgur.com/2/upload.xml  OR curl -d "image=http://example.com/example.jpg" -d "key=YOUR_API_KEY" http://api.imgur.com/2/upload.json
+				
+			}
+	}
 }
 
-void CheckLineForTrigger(const CString& sMessage, const CString& sChannel, const CString& sNick){
+size_t CUrlBufferModule::write_data(void *ptr, size_t size, size_t nmemb, FILE *stream) {
+		size_t written;
+		written = fwrite(ptr, size, nmemb, stream);
+		return written;
+}
+	
+void CUrlBufferModule::CheckLineForTrigger(const CString& sMessage, const CString& sChannel, const CString& sNick){
 	//search for trigger in message
 	//if one is found
 	//return the last x buffered links
 }
-	
+
 MODULEDEFS(CUrlBufferModule, "Module that caches images from links posted on irc channels.")
 
