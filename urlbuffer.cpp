@@ -1,17 +1,12 @@
 /* Copyright (C) 2011 uberspot
  *
- * Compiling: znc-buildmod urlbuffer.cpp
- * Api key: 5ce86e7f95d8e58b18931bf290f387be
+ * Compiling: znc-buildmod urlbuffer.cpp 
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 3 as published
  * by the Free Software Foundation (http://www.gnu.org/licenses/gpl.txt).
 */ 
 
-#define CURL_STATICLIB 
-#include <curl/curl.h>
-/* #include <curl/types.h> // removed in arch linux */
-#include <curl/easy.h>
 #include "main.h"
 #include "User.h"
 #include "Nick.h"
@@ -27,91 +22,37 @@ private:
 	SUrls lastUrls; 
 	
 	void SaveSettings();
-	void LoadSettings();
-	size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream);
-	void CheckLineForLink(const CString& sMessage, const CString& sChannel, const CString& sNick);
+	void LoadSettings(); 
+	void CheckLineForLink(const CString& sMessage);
 	void CheckLineForTrigger(const CString& sMessage, const CString& sChannel, const CString& sNick); 
-	
+	CString getStdoutFromCommand(string cmd);
 public:
 	MODCONSTRUCTOR(CUrlBufferModule) {}
 
 	bool OnLoad(const CString& sArgs, CString& sErrorMsg);
-	~CUrlBufferModule();
-	EModRet OnBroadcast(CString& sMessage);
-	EModRet OnRaw(CString& sLine);
-	EModRet OnUserRaw(CString& sLine);
-	EModRet OnUserCTCPReply(CString& sTarget, CString& sMessage);
-	EModRet OnCTCPReply(CNick& Nick, CString& sMessage);
-	EModRet OnUserCTCP(CString& sTarget, CString& sMessage);
-	EModRet OnPrivCTCP(CNick& Nick, CString& sMessage);
-	EModRet OnChanCTCP(CNick& Nick, CChan& Channel, CString& sMessage) ;
+	~CUrlBufferModule(); 
 	EModRet OnUserMsg(CString& sTarget, CString& sMessage);
 	EModRet OnPrivMsg(CNick& Nick, CString& sMessage);
 	EModRet OnChanMsg(CNick& Nick, CChan& Channel, CString& sMessage);
 	void OnModCommand(const CString& sCommand);
+	
 };
 
 bool CUrlBufferModule::OnLoad(const CString& sArgs, CString& sErrorMsg) {
-	LoadSettings();
+	LoadSettings(); 
 	return true;
 }
 
 CUrlBufferModule::~CUrlBufferModule() {}
 
-CUrlBufferModule::EModRet CUrlBufferModule::OnBroadcast(CString& sMessage) {
-	PutModule("------ [" + sMessage + "]");
-	sMessage = "======== [" + sMessage + "] ========";
-	return CONTINUE;
-}
-
-CUrlBufferModule::EModRet CUrlBufferModule::OnRaw(CString& sLine) {
-	//sLinePutModule("OnRaw() [" + sLine + "]");
-	return CONTINUE;
-}
-
-CUrlBufferModule::EModRet CUrlBufferModule::OnUserRaw(CString& sLine) {
-	//sLinePutModule("UserRaw() [" + sLine + "]");
-	return CONTINUE;
-}
-
-CUrlBufferModule::EModRet CUrlBufferModule::OnUserCTCPReply(CString& sTarget, CString& sMessage) {
-	PutModule("[" + sTarget + "] userctcpreply [" + sMessage + "]");
-	sMessage = "\037" + sMessage + "\037";
-	return CONTINUE;
-}
-
-CUrlBufferModule::EModRet CUrlBufferModule::OnCTCPReply(CNick& Nick, CString& sMessage) {
-	PutModule("[" + Nick.GetNick() + "] ctcpreply [" + sMessage + "]");
-	return CONTINUE;
-}
-
-CUrlBufferModule::EModRet CUrlBufferModule::OnUserCTCP(CString& sTarget, CString& sMessage) {
-	PutModule("[" + sTarget + "] userctcp [" + sMessage + "]");
-	return CONTINUE;
-}
-
-CUrlBufferModule::EModRet CUrlBufferModule::OnPrivCTCP(CNick& Nick, CString& sMessage) {
-	PutModule("[" + Nick.GetNick() + "] privctcp [" + sMessage + "]");
-	sMessage = "\002" + sMessage + "\002";
-	return CONTINUE;
-}
-
-CUrlBufferModule::EModRet CUrlBufferModule::OnChanCTCP(CNick& Nick, CChan& Channel, CString& sMessage) {
-	PutModule("[" + Nick.GetNick() + "] chanctcp [" + sMessage + "] to [" + Channel.GetName() + "]");
-	sMessage = "\00311,5 " + sMessage + " \003";
-	return CONTINUE;
-}
-
 CUrlBufferModule::EModRet CUrlBufferModule::OnUserMsg(CString& sTarget, CString& sMessage) {
-	PutModule("[" + sTarget + "] usermsg [" + sMessage + "]");
-	sMessage = "\0034" + sMessage + "\003";
+	//PutModule("[" + sTarget + "] usermsg [" + sMessage + "]");
+	//sMessage = "\0034" + sMessage + "\003";
 	return CONTINUE;
 }
 
-CUrlBufferModule::EModRet CUrlBufferModule::OnPrivMsg(CNick& Nick, CString& sMessage) {
-	PutModule("[" + Nick.GetNick() + "] privmsg [" + sMessage + "]");
-	sMessage = "\002" + sMessage + "\002";
-
+CUrlBufferModule::EModRet CUrlBufferModule::OnPrivMsg(CNick& Nick, CString& sMessage) { 
+	CheckLineForLink("http://www.fclbuilders.com/images/port_images/mids/cpp-main.jpg");
 	return CONTINUE;
 }
 
@@ -119,8 +60,7 @@ CUrlBufferModule::EModRet CUrlBufferModule::OnChanMsg(CNick& Nick, CChan& Channe
 	if (sMessage == "!ping") {
 		PutIRC("PRIVMSG " + Channel.GetName() + " :PONG?");
 	}
-	sMessage = "x " + sMessage + " x";
-	PutModule(sMessage);
+	sMessage = "x " + sMessage + " x"; 
 
 	return CONTINUE;
 }
@@ -157,44 +97,54 @@ void CUrlBufferModule::LoadSettings() {
 			settings[sChanName].push_back(right);
 		}
 	}
+	PutModule("Loaded Settings");
 }
 
-void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& sChannel, const CString& sNick){
+void CUrlBufferModule::CheckLineForLink(const CString& sMessage){
 	VCString words;
-	CString space = " ", empty="";
+	CString space(" "), empty(""), output;
 	sMessage.Split(space, words, false, empty, empty, true, true);
 	for (size_t a = 0; a < words.size(); a++) {
 			const CString& word = words[a];
 			if(word.Left(4) == "http"){
-				//if you find one download it, save it in the www directory and keep new link in buffer ;
-				CURL *curl;
-				const char *url = word.c_str();
-				FILE *fp;
-				CURLcode res; 
-				char outfilename[FILENAME_MAX] = "/var/www/urlbuffer/temp";
-				curl = curl_easy_init();
-				if (curl) {
-					fp = fopen(outfilename,"wb");
-					curl_easy_setopt(curl, CURLOPT_URL, url ); //link 
-					curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &CUrlBufferModule::write_data);
-					curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
-					res = curl_easy_perform(curl);
-					curl_easy_cleanup(curl);
-					fclose(fp);
-				}
-				lastUrls.push_back("http://uberspot.ath.cx/urlbuffer/" + word);
-				//reupload on imgur curl -F "image=@file.png" -F "key=YOUR_API_KEY" http://api.imgur.com/2/upload.xml  OR curl -d "image=http://example.com/example.jpg" -d "key=YOUR_API_KEY" http://api.imgur.com/2/upload.json
+				//if you find one download it, save it in the www directory and keep new link in buffer ; 
 				
+				const char *url = word.c_str(); 
+				std::stringstream ss;
+				ss << "wget -O /tmp/test -q " << url;
+				output = getStdoutFromCommand(ss.str());
+				PutModule(output);
+				ss << "curl -d \"image=" << url << " -d \"key=5ce86e7f95d8e58b18931bf290f387be\" http://api.imgur.com/2/upload.json";
+				output = getStdoutFromCommand(ss.str());
+				PutModule(output);
+				lastUrls.push_back("http://uberspot.ath.cx/urlbuffer/" + word);
 			}
 	}
+} 
+	
+CString CUrlBufferModule::getStdoutFromCommand(string cmd) {
+	// setup
+	string data;
+	FILE *stream;
+	int MAX_BUFFER = 1024;
+	char buffer[MAX_BUFFER];
+	cmd.append(" 2>&1");
+	
+	// do it
+	stream = popen(cmd.c_str(), "r");
+	if (!stream){
+		exit(1);
+	}
+	while (!feof(stream)){
+		if (fgets(buffer, MAX_BUFFER, stream) != NULL){
+			data.append(buffer);
+		}
+	}
+	pclose(stream);
+	
+	return CString(data);
 }
 
-size_t CUrlBufferModule::write_data(void *ptr, size_t size, size_t nmemb, FILE *stream) {
-		size_t written;
-		written = fwrite(ptr, size, nmemb, stream);
-		return written;
-}
-	
 void CUrlBufferModule::CheckLineForTrigger(const CString& sMessage, const CString& sChannel, const CString& sNick){
 	//search for trigger in message
 	//if one is found
