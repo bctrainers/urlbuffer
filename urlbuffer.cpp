@@ -52,7 +52,7 @@ CUrlBufferModule::EModRet CUrlBufferModule::OnUserMsg(CString& sTarget, CString&
 }
 
 CUrlBufferModule::EModRet CUrlBufferModule::OnPrivMsg(CNick& Nick, CString& sMessage) { 
-	CheckLineForLink("http://www.fclbuilders.com/images/port_images/mids/cpp-main.jpg");
+	CheckLineForLink("http://www.fclbuilders.com/images/port_images/mids/cpp-main.jpg blabla .");//works
 	return CONTINUE;
 }
 
@@ -60,7 +60,6 @@ CUrlBufferModule::EModRet CUrlBufferModule::OnChanMsg(CNick& Nick, CChan& Channe
 	if (sMessage == "!ping") {
 		PutIRC("PRIVMSG " + Channel.GetName() + " :PONG?");
 	}
-	sMessage = "x " + sMessage + " x"; 
 
 	return CONTINUE;
 }
@@ -97,7 +96,6 @@ void CUrlBufferModule::LoadSettings() {
 			settings[sChanName].push_back(right);
 		}
 	}
-	PutModule("Loaded Settings");
 }
 
 void CUrlBufferModule::CheckLineForLink(const CString& sMessage){
@@ -105,43 +103,41 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage){
 	CString space(" "), empty(""), output;
 	sMessage.Split(space, words, false, empty, empty, true, true);
 	for (size_t a = 0; a < words.size(); a++) {
-			const CString& word = words[a];
-			if(word.Left(4) == "http"){
-				//if you find one download it, save it in the www directory and keep new link in buffer ; 
-				
-				const char *url = word.c_str(); 
-				std::stringstream ss;
-				ss << "wget -O /tmp/test -q " << url;
-				output = getStdoutFromCommand(ss.str());
-				PutModule(output);
-				ss << "curl -d \"image=" << url << " -d \"key=5ce86e7f95d8e58b18931bf290f387be\" http://api.imgur.com/2/upload.json";
-				output = getStdoutFromCommand(ss.str());
-				PutModule(output);
-				lastUrls.push_back("http://uberspot.ath.cx/urlbuffer/" + word);
-			}
+
+		const CString& word = words[a];
+		if(word.Left(4) == "http"){
+			//if you find one download it, save it in the www directory and keep new link in buffer ; 
+			
+			const char *url = word.c_str(); 
+			std::stringstream ss;
+			ss << "wget -O /tmp/test -q " << url;
+			output = getStdoutFromCommand(ss.str());
+			ss.str("");
+			ss << "curl -d \"image=" << url << "\" -d \"key=5ce86e7f95d8e58b18931bf290f387be\" http://api.imgur.com/2/upload.xml | sed -n 's/.*<original>\\(.*\\)<\\/original>.*/\\1/p'";
+			output = getStdoutFromCommand(ss.str());
+			PutModule("upload output: " + output);
+			lastUrls.push_back(output);
+		}
 	}
 } 
 	
 CString CUrlBufferModule::getStdoutFromCommand(string cmd) {
-	// setup
-	string data;
-	FILE *stream;
-	int MAX_BUFFER = 1024;
-	char buffer[MAX_BUFFER];
-	cmd.append(" 2>&1");
+	string data="";
+	char buffer[128];
+	cmd.append(" 2>&1");	
 	
-	// do it
-	stream = popen(cmd.c_str(), "r");
-	if (!stream){
-		exit(1);
+	FILE* stream = popen(cmd.c_str(), "r");
+	if (stream == NULL || !stream || ferror(stream)){
+                PutModule("Error");
+		return CString("");
 	}
 	while (!feof(stream)){
-		if (fgets(buffer, MAX_BUFFER, stream) != NULL){
+		if (fgets(buffer, 128, stream) != NULL){
 			data.append(buffer);
 		}
 	}
-	pclose(stream);
 	
+	pclose(stream);
 	return CString(data);
 }
 
