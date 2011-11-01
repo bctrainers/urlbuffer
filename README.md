@@ -8,12 +8,14 @@ The module needs wget, sed, curl, a unix enviroment and a directory with write a
 
 ##Usage
 
-Compile it with znc-buildmod urlbuffer.cpp and move the .so file to the appropriate znc directory (usually /usr/lib/znc/).
+Compile it with 
+`znc-buildmod urlbuffer.cpp` 
+and move the .so file to the appropriate znc directory (usually /usr/lib/znc/).
 
 The module takes no arguments.
-Read http://wiki.znc.in/Modules#.28Un.29Loading_Modules[loading modules] to learn more about loading modules. 
+Read [http://wiki.znc.in/Modules#.28Un.29Loading_Modules](loading modules) to learn more about loading modules. 
 
 ##Commands 
 
-(todo)
+todo
 
