@@ -13,7 +13,7 @@ Compile it with
 and move the .so file to the appropriate znc directory (usually /usr/lib/znc/).
 
 The module takes no arguments.
-Read [http://wiki.znc.in/Modules#.28Un.29Loading_Modules](loading modules) to learn more about loading modules. 
+Read [loading modules](http://wiki.znc.in/Modules#.28Un.29Loading_Modules) to learn more about loading modules. 
 
 ##Commands 
 
