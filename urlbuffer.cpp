@@ -1,6 +1,7 @@
 /* Copyright (C) 2011 uberspot
  *
  * Compiling: znc-buildmod urlbuffer.cpp 
+ * Dependencies: curl, wget, sed and a unix enviroment.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 3 as published
@@ -13,6 +14,8 @@
 #include "Modules.h"
 #include "Chan.h" 
 
+#define MAX_EXTS 6
+
 typedef map<const CString, VCString> TSettings;
 typedef vector<CString> SUrls;
 
@@ -22,8 +25,17 @@ private:
 	SUrls lastUrls; 
 	
 	void SaveSettings();
-	void LoadSettings(); 
-	void CheckLineForLink(const CString& sMessage);
+	void LoadSettings();
+	static const string supportedExts[MAX_EXTS] ;
+	inline bool isValidExtension(CString ext){
+		for(int i=0; i< MAX_EXTS; i++){
+	        	if( ext.CaseCmp(supportedExts[i]) ){
+				return true;
+			}
+		}	
+		return false;
+	} 
+	inline void CheckLineForLink(const CString& sMessage);
 	void CheckLineForTrigger(const CString& sMessage, const CString& sChannel, const CString& sNick); 
 	CString getStdoutFromCommand(string cmd);
 public:
@@ -37,6 +49,8 @@ public:
 	void OnModCommand(const CString& sCommand);
 	
 };
+
+const string CUrlBufferModule::supportedExts[MAX_EXTS] = {"jpg", "png", "gif", "jpeg", "bmp", "tiff"} ;
 
 bool CUrlBufferModule::OnLoad(const CString& sArgs, CString& sErrorMsg) {
 	LoadSettings(); 
@@ -100,23 +114,29 @@ void CUrlBufferModule::LoadSettings() {
 
 void CUrlBufferModule::CheckLineForLink(const CString& sMessage){
 	VCString words;
-	CString space(" "), empty(""), output;
+	CString space(" "), empty(""), slash("/"), dot("."), output;
 	sMessage.Split(space, words, false, empty, empty, true, true);
 	for (size_t a = 0; a < words.size(); a++) {
-
 		const CString& word = words[a];
+		
 		if(word.Left(4) == "http"){
 			//if you find one download it, save it in the www directory and keep new link in buffer ; 
-			
-			const char *url = word.c_str(); 
-			std::stringstream ss;
-			ss << "wget -O /tmp/test -q " << url;
-			output = getStdoutFromCommand(ss.str());
-			ss.str("");
-			ss << "curl -d \"image=" << url << "\" -d \"key=5ce86e7f95d8e58b18931bf290f387be\" http://api.imgur.com/2/upload.xml | sed -n 's/.*<original>\\(.*\\)<\\/original>.*/\\1/p'";
-			output = getStdoutFromCommand(ss.str());
-			PutModule("upload output: " + output);
-			lastUrls.push_back(output);
+
+			VCString tokens;
+			word.Split(slash, tokens, false, empty, empty, true, true);
+			string name = tokens[tokens.size()-1];
+			word.Split(dot, tokens, false, empty, empty, true, true);
+
+			if(isValidExtension( tokens[tokens.size()-1] )){
+			    std::stringstream ss;
+			    ss << "wget -O /var/www/urlbuffer/"<< name <<" -q " << word.c_str() ;
+			    output = getStdoutFromCommand(ss.str());
+			    ss.str("");
+			    ss << "curl -d \"image=" << word.c_str() << "\" -d \"key=5ce86e7f95d8e58b18931bf290f387be\" http://api.imgur.com/2/upload.xml | sed -n 's/.*<original>\\(.*\\)<\\/original>.*/\\1/p'";
+			    output = getStdoutFromCommand(ss.str());
+			    PutModule("upload output: " + output);
+			    lastUrls.push_back(output);
+			}
 		}
 	}
 } 
