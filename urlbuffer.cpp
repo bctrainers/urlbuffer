@@ -36,8 +36,8 @@ private:
 		return false;
 	} 
 	inline void CheckLineForLink(const CString& sMessage);
-	void CheckLineForTrigger(const CString& sMessage, const CString& sChannel, const CString& sNick); 
-	CString getStdoutFromCommand(string cmd);
+	inline void CheckLineForTrigger(const CString& sMessage, const CString& sChannel, const CString& sNick); 
+	inline CString getStdoutFromCommand(string cmd);
 public:
 	MODCONSTRUCTOR(CUrlBufferModule) {}
 
@@ -71,7 +71,7 @@ CUrlBufferModule::EModRet CUrlBufferModule::OnPrivMsg(CNick& Nick, CString& sMes
 }
 
 CUrlBufferModule::EModRet CUrlBufferModule::OnChanMsg(CNick& Nick, CChan& Channel, CString& sMessage) {
-	if (sMessage == "!ping") {
+	if (sMessage == "!showlast") {
 		PutIRC("PRIVMSG " + Channel.GetName() + " :PONG?");
 	}
 
@@ -114,8 +114,8 @@ void CUrlBufferModule::LoadSettings() {
 
 void CUrlBufferModule::CheckLineForLink(const CString& sMessage){
 	VCString words;
-	CString space(" "), empty(""), slash("/"), dot("."), output;
-	sMessage.Split(space, words, false, empty, empty, true, true);
+	CString output;
+	sMessage.Split(" ", words, false, "", "", true, true);
 	for (size_t a = 0; a < words.size(); a++) {
 		const CString& word = words[a];
 		
@@ -123,9 +123,9 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage){
 			//if you find one download it, save it in the www directory and keep new link in buffer ; 
 
 			VCString tokens;
-			word.Split(slash, tokens, false, empty, empty, true, true);
+			word.Split("/", tokens, false, "", "", true, true);
 			string name = tokens[tokens.size()-1];
-			word.Split(dot, tokens, false, empty, empty, true, true);
+			word.Split(".", tokens, false, "", "", true, true);
 
 			if(isValidExtension( tokens[tokens.size()-1] )){
 			    std::stringstream ss;
@@ -163,8 +163,14 @@ CString CUrlBufferModule::getStdoutFromCommand(string cmd) {
 
 void CUrlBufferModule::CheckLineForTrigger(const CString& sMessage, const CString& sChannel, const CString& sNick){
 	//search for trigger in message
-	//if one is found
-	//return the last x buffered links
+	VCString words;
+	sMessage.Split(" ", words, false, "", "", true, true);
+	for (size_t a = 0; a < words.size(); a++) {
+                const CString& word = words[a];
+		if(word.CaseCmp("!showlinks")){
+			//print links
+		}
+	}
 }
 
 MODULEDEFS(CUrlBufferModule, "Module that caches images from links posted on irc channels.")
