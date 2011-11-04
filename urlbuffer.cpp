@@ -60,28 +60,31 @@ bool CUrlBufferModule::OnLoad(const CString& sArgs, CString& sErrorMsg) {
 CUrlBufferModule::~CUrlBufferModule() {}
 
 CUrlBufferModule::EModRet CUrlBufferModule::OnUserMsg(CString& sTarget, CString& sMessage) {
-	//PutModule("[" + sTarget + "] usermsg [" + sMessage + "]");
-	//sMessage = "\0034" + sMessage + "\003";
+	CheckLineForLink(sMessage);
+        CheckLineForTrigger(sMessage,"", sTarget);
 	return CONTINUE;
 }
 
 CUrlBufferModule::EModRet CUrlBufferModule::OnPrivMsg(CNick& Nick, CString& sMessage) { 
-	CheckLineForLink("http://www.fclbuilders.com/images/port_images/mids/cpp-main.jpg blabla .");//works
+	CheckLineForLink(sMessage);
+	CheckLineForTrigger(sMessage,"", Nick.GetNick());
 	return CONTINUE;
 }
 
 CUrlBufferModule::EModRet CUrlBufferModule::OnChanMsg(CNick& Nick, CChan& Channel, CString& sMessage) {
+	CheckLineForLink(sMessage);
+        CheckLineForTrigger(sMessage, Channel.GetName(), Nick.GetNick());
 	if (sMessage == "!showlast") {
 		PutIRC("PRIVMSG " + Channel.GetName() + " :PONG?");
 	}
-
 	return CONTINUE;
 }
 
 void CUrlBufferModule::OnModCommand(const CString& sCommand) {
-	if (strcasecmp(sCommand.c_str(), "TIMERS") == 0) {
+	if (strcasecmp(sCommand.c_str(), "HELP")) {
+		//print help
 		return;
-	}
+	}//...
 }
 
 void CUrlBufferModule::SaveSettings() {
