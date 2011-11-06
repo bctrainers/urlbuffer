@@ -17,5 +17,8 @@ Read [loading modules](http://wiki.znc.in/Modules#.28Un.29Loading_Modules) to le
 
 ##Commands 
 
-todo
+`!showlinks` 
+in your irc client displays the last links buffered.
+
+
 

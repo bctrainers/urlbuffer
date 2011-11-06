@@ -13,31 +13,34 @@
 #include "Nick.h"
 #include "Modules.h"
 #include "Chan.h" 
+#include <pthread.h>
 
 #define MAX_EXTS 6
 
 typedef map<const CString, VCString> TSettings;
 typedef vector<CString> SUrls;
 
+void *download(void *ptr);
+inline CString getStdoutFromCommand(string cmd);
+
 class CUrlBufferModule : public CModule {
 private: 
 	TSettings settings;
 	SUrls lastUrls; 
 	
-	void SaveSettings();
-	void LoadSettings();
+	inline void SaveSettings();
+	inline void LoadSettings();
 	static const string supportedExts[MAX_EXTS] ;
 	inline bool isValidExtension(CString ext){
 		for(int i=0; i< MAX_EXTS; i++){
-	        	if( ext.CaseCmp(supportedExts[i]) ){
+	        	if( ext == supportedExts[i]){
 				return true;
 			}
 		}	
 		return false;
 	} 
-	inline void CheckLineForLink(const CString& sMessage);
-	inline void CheckLineForTrigger(const CString& sMessage, const CString& sChannel, const CString& sNick); 
-	inline CString getStdoutFromCommand(string cmd);
+	inline void CheckLineForLink(const CString& sMessage, const CString& sOrigin);
+	inline void CheckLineForTrigger(const CString& sMessage, const CString& sTarget); 
 public:
 	MODCONSTRUCTOR(CUrlBufferModule) {}
 
@@ -60,23 +63,23 @@ bool CUrlBufferModule::OnLoad(const CString& sArgs, CString& sErrorMsg) {
 CUrlBufferModule::~CUrlBufferModule() {}
 
 CUrlBufferModule::EModRet CUrlBufferModule::OnUserMsg(CString& sTarget, CString& sMessage) {
-	CheckLineForLink(sMessage);
-        CheckLineForTrigger(sMessage,"", sTarget);
+	PutModule("OnUserMsg");
+	CheckLineForLink(sMessage, "");
+        CheckLineForTrigger(sMessage, sTarget);
 	return CONTINUE;
 }
 
 CUrlBufferModule::EModRet CUrlBufferModule::OnPrivMsg(CNick& Nick, CString& sMessage) { 
-	CheckLineForLink(sMessage);
-	CheckLineForTrigger(sMessage,"", Nick.GetNick());
+	PutModule("OnPrivMsg");
+	CheckLineForLink(sMessage, Nick.GetNick());
+	CheckLineForTrigger(sMessage, Nick.GetNick());
 	return CONTINUE;
 }
 
 CUrlBufferModule::EModRet CUrlBufferModule::OnChanMsg(CNick& Nick, CChan& Channel, CString& sMessage) {
-	CheckLineForLink(sMessage);
-        CheckLineForTrigger(sMessage, Channel.GetName(), Nick.GetNick());
-	if (sMessage == "!showlast") {
-		PutIRC("PRIVMSG " + Channel.GetName() + " :PONG?");
-	}
+	PutModule("OnChanMsg");
+	CheckLineForLink(sMessage, Nick.GetNick());
+        CheckLineForTrigger(sMessage, Nick.GetNick());
 	return CONTINUE;
 }
 
@@ -89,11 +92,9 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand) {
 
 void CUrlBufferModule::SaveSettings() {
 	ClearNV();
-
 	for(TSettings::const_iterator itc = settings.begin(); itc != settings.end(); itc++){
 		CString sName =  itc->first;
 		CString sData;
-
 		for(VCString::const_iterator itt = itc->second.begin(); itt != itc->second.end(); itt++){
 			sData += *itt + "";
 		}
@@ -102,7 +103,6 @@ void CUrlBufferModule::SaveSettings() {
 		else
 			SetNV(sName, sData, false);
 	}
-
 }
 
 void CUrlBufferModule::LoadSettings() {
@@ -115,44 +115,56 @@ void CUrlBufferModule::LoadSettings() {
 	}
 }
 
-void CUrlBufferModule::CheckLineForLink(const CString& sMessage){
-	VCString words;
-	CString output;
-	sMessage.Split(" ", words, false, "", "", true, true);
-	for (size_t a = 0; a < words.size(); a++) {
-		const CString& word = words[a];
-		
-		if(word.Left(4) == "http"){
-			//if you find one download it, save it in the www directory and keep new link in buffer ; 
+void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& sOrigin){
+	if(sOrigin != m_pUser->GetIRCNick().GetNick() ){
+	
+		VCString words;
+		CString output;
+		sMessage.Split(" ", words, false, "", "", true, true);
+		for (size_t a = 0; a < words.size(); a++) {
+			const CString& word = words[a];
+			if(word.Left(4) == "http"){
+				//if you find an image download it, save it in the www directory and keep the new link in buffer
 
-			VCString tokens;
-			word.Split("/", tokens, false, "", "", true, true);
-			string name = tokens[tokens.size()-1];
-			word.Split(".", tokens, false, "", "", true, true);
+				VCString tokens;
+				word.Split("/", tokens, false, "", "", true, true);
+				string name = tokens[tokens.size()-1];
+				word.Split(".", tokens, false, "", "", true, true);
 
-			if(isValidExtension( tokens[tokens.size()-1] )){
-			    std::stringstream ss;
-			    ss << "wget -O /var/www/urlbuffer/"<< name <<" -q " << word.c_str() ;
-			    output = getStdoutFromCommand(ss.str());
-			    ss.str("");
-			    ss << "curl -d \"image=" << word.c_str() << "\" -d \"key=5ce86e7f95d8e58b18931bf290f387be\" http://api.imgur.com/2/upload.xml | sed -n 's/.*<original>\\(.*\\)<\\/original>.*/\\1/p'";
-			    output = getStdoutFromCommand(ss.str());
-			    PutModule("upload output: " + output);
-			    lastUrls.push_back(output);
-			}
+				if(isValidExtension( tokens[tokens.size()-1] )){
+			    		pthread_t thread;
+			    	int status;
+
+			    	std::stringstream ss;
+			    	ss << "wget -O /var/www/urlbuffer/"<< name <<" -q " << word.c_str() ;
+			    	status = pthread_create( &thread, NULL, download, (void*)ss.str().c_str());
+
+			    	ss.str("");
+			    	ss << "curl -d \"image=" << word.c_str() << "\" -d \"key=5ce86e7f95d8e58b18931bf290f387be\" http://api.imgur.com/2/upload.xml | sed -n 's/.*<original>\\(.*\\)<\\/original>.*/\\1/p'";
+			    	output = getStdoutFromCommand(ss.str());
+			    	pthread_join(thread,NULL);
+			    
+			    	lastUrls.push_back(output);
+				}
 		}
 	}
+	}
 } 
-	
-CString CUrlBufferModule::getStdoutFromCommand(string cmd) {
+
+void *download(void *ptr){
+	char *command;
+	command = (char *) ptr;
+	getStdoutFromCommand(command);
+}
+
+CString getStdoutFromCommand(string cmd) {
 	string data="";
 	char buffer[128];
 	cmd.append(" 2>&1");	
 	
 	FILE* stream = popen(cmd.c_str(), "r");
-	if (stream == NULL || !stream || ferror(stream)){
-                PutModule("Error");
-		return CString("");
+	if (stream == NULL || !stream || ferror(stream)){ 
+		return CString("Error!");
 	}
 	while (!feof(stream)){
 		if (fgets(buffer, 128, stream) != NULL){
@@ -164,14 +176,21 @@ CString CUrlBufferModule::getStdoutFromCommand(string cmd) {
 	return CString(data);
 }
 
-void CUrlBufferModule::CheckLineForTrigger(const CString& sMessage, const CString& sChannel, const CString& sNick){
+void CUrlBufferModule::CheckLineForTrigger(const CString& sMessage, const CString& sTarget){
 	//search for trigger in message
 	VCString words;
 	sMessage.Split(" ", words, false, "", "", true, true);
 	for (size_t a = 0; a < words.size(); a++) {
                 const CString& word = words[a];
-		if(word.CaseCmp("!showlinks")){
+		if(word == "!showlinks"){
 			//print links
+			PutModule("target: " + sTarget);
+			if(lastUrls.size()==0){
+				PutIRC("PRIVMSG " + sTarget + " :No links were found...");
+			}
+			for(unsigned int i=0; i< lastUrls.size(); i++){
+				PutIRC("PRIVMSG " + sTarget + " :" + lastUrls[i]);
+			}
 		}
 	}
 }
