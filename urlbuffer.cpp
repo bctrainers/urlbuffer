@@ -16,8 +16,9 @@
 #include <pthread.h>
 
 #define MAX_EXTS 6
+#define MAX_CHARS 16
 
-typedef map<CString, CString> TSettings;
+typedef map<const CString, CString> TSettings;
 typedef vector<CString> SUrls;
 
 void *download(void *ptr);
@@ -31,6 +32,7 @@ private:
 	inline void SaveSettings();
 	inline void LoadSettings();
 	static const string supportedExts[MAX_EXTS] ;
+	static const char unSupportedChars[MAX_CHARS];
 	inline bool isValidExtension(CString ext){
 		for(int i=0; i< MAX_EXTS; i++){
 	        	if( ext.MakeLower() == supportedExts[i]){
@@ -54,6 +56,7 @@ public:
 };
 
 const string CUrlBufferModule::supportedExts[MAX_EXTS] = {"jpg", "png", "gif", "jpeg", "bmp", "tiff"} ;
+const char CUrlBufferModule::unSupportedChars[MAX_CHARS] = {'|', ';', '!', '@', '#', '(', ')', '<', '>', '"',  '\'', '`', '~', '=', '&', '^'};
 
 bool CUrlBufferModule::OnLoad(const CString& sArgs, CString& sErrorMsg) {
 	LoadSettings(); 
@@ -128,6 +131,13 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand) {
 		settings["enablelocal"]="false";
 		PutModule("Disabled local caching");
 	}else if (command == "directory") {
+		string dir=sCommand.Token(1);
+		for(int i=0; i< MAX_CHARS; i++){
+                        if (dir.find(unSupportedChars[i]) !=string::npos){
+                                PutModule("Error in directory name. Avoid using: | ; ! @ # ( ) < > \" ' ` ~ = & ^ <space> <tab>");
+				return;
+                        }
+                }	
 		settings["directory"]= sCommand.Token(1); //filter
 		PutModule("Directory for local caching set to " + settings["directory"]);
         }else{
@@ -158,7 +168,7 @@ void CUrlBufferModule::LoadSettings() {
 }
 
 void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& sOrigin){
-	if(sOrigin != m_pUser->GetIRCNick().GetNick() ){
+	if(sOrigin != m_pUser->GetIRCNick().GetNick() && settings["enable"]=="true" ){
 	
 		VCString words;
 		CString output;
@@ -176,16 +186,18 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 				if(isValidExtension( tokens[tokens.size()-1] )){
 			    		pthread_t thread;
 
-			    	std::stringstream ss;
-			    	ss << "wget -O /var/www/urlbuffer/"<< name <<" -q " << word.c_str() ;
-			    	pthread_create( &thread, NULL, download, (void*)ss.str().c_str());
+			    		std::stringstream ss;
+			    		ss << "wget -O /var/www/urlbuffer/"<< name <<" -q " << word.c_str() ;
+			    		if(settings["enablelocal"]=="true") 
+						pthread_create( &thread, NULL, download, (void*)ss.str().c_str());
 
-			    	ss.str("");
-			    	ss << "curl -d \"image=" << word.c_str() << "\" -d \"key=5ce86e7f95d8e58b18931bf290f387be\" http://api.imgur.com/2/upload.xml | sed -n 's/.*<original>\\(.*\\)<\\/original>.*/\\1/p'";
-			    	output = getStdoutFromCommand(ss.str());
-			    	pthread_join(thread,NULL);
+			    		ss.str("");
+			    		ss << "curl -d \"image=" << word.c_str() << "\" -d \"key=5ce86e7f95d8e58b18931bf290f387be\" http://api.imgur.com/2/upload.xml | sed -n 's/.*<original>\\(.*\\)<\\/original>.*/\\1/p'";
+			    		output = getStdoutFromCommand(ss.str());
+			    		if(settings["enablelocal"]=="true")
+                                                pthread_join(thread,NULL);
 			    
-			    	lastUrls.push_back(output);
+			    		lastUrls.push_back(output);
 				}
 		}
 	}
@@ -227,7 +239,6 @@ void CUrlBufferModule::CheckLineForTrigger(const CString& sMessage, const CStrin
 		
 		if(word.AsLower() == "!showlinks"){
 			//print links
-			PutModule("target: " + sTarget);
 			if(lastUrls.size()==0){
 				PutIRC("PRIVMSG " + sTarget + " :No links were found...");
 			}
