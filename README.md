@@ -20,5 +20,11 @@ Read [loading modules](http://wiki.znc.in/Modules#.28Un.29Loading_Modules) to le
 `!showlinks` 
 in your irc client displays the last links buffered.
 
-
+Module commands:
+ * `/msg *urlbuffer help` displays help.
+ * `/msg *urlbuffer enable` activates link buffering.
+ * `/msg *urlbuffer disable` deactivates link buffering.
+ * `/msg *urlbuffer enablelocal` enables downloading of each link to local directory.
+ * `/msg *urlbuffer disablelocal` disables downloading of each link to local directory.
+ * `/msg *urlbuffer directory <#dir>` Sets the local directory where the links will be saved. (e.g. `/msg *urlbuffer directory /home/.znc/moddata/urlbuffer/`) Make sure the directory exists and that the znc user has write privileges.
 

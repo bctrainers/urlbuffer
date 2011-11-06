@@ -33,7 +33,7 @@ private:
 	static const string supportedExts[MAX_EXTS] ;
 	inline bool isValidExtension(CString ext){
 		for(int i=0; i< MAX_EXTS; i++){
-	        	if( ext == supportedExts[i]){
+	        	if( ext.MakeLower() == supportedExts[i]){
 				return true;
 			}
 		}	
@@ -63,31 +63,67 @@ bool CUrlBufferModule::OnLoad(const CString& sArgs, CString& sErrorMsg) {
 CUrlBufferModule::~CUrlBufferModule() {}
 
 CUrlBufferModule::EModRet CUrlBufferModule::OnUserMsg(CString& sTarget, CString& sMessage) {
-	PutModule("OnUserMsg");
 	CheckLineForLink(sMessage, "");
         CheckLineForTrigger(sMessage, sTarget);
 	return CONTINUE;
 }
 
 CUrlBufferModule::EModRet CUrlBufferModule::OnPrivMsg(CNick& Nick, CString& sMessage) { 
-	PutModule("OnPrivMsg");
 	CheckLineForLink(sMessage, Nick.GetNick());
 	CheckLineForTrigger(sMessage, Nick.GetNick());
 	return CONTINUE;
 }
 
 CUrlBufferModule::EModRet CUrlBufferModule::OnChanMsg(CNick& Nick, CChan& Channel, CString& sMessage) {
-	PutModule("OnChanMsg");
 	CheckLineForLink(sMessage, Nick.GetNick());
         CheckLineForTrigger(sMessage, Nick.GetNick());
 	return CONTINUE;
 }
 
 void CUrlBufferModule::OnModCommand(const CString& sCommand) {
-	if (strcasecmp(sCommand.c_str(), "HELP")) {
-		//print help
+	CString command = sCommand;
+	command.MakeLower().Trim();
+	if (command == "help") {
+		CTable CmdTable;
+
+		CmdTable.AddColumn("Command");
+		CmdTable.AddColumn("Description");
+
+		CmdTable.AddRow();
+		CmdTable.SetCell("Command", "ENABLE");
+		CmdTable.SetCell("Description", "Activates link buffering.");
+
+		CmdTable.AddRow();
+		CmdTable.SetCell("Command", "DISABLE");
+		CmdTable.SetCell("Description", "Deactivates link buffering.");
+
+		CmdTable.AddRow();
+		CmdTable.SetCell("Command", "ENABLELOCAL");
+		CmdTable.SetCell("Description", "Enables downloading of each link to local directory.");
+
+		CmdTable.AddRow();
+		CmdTable.SetCell("Command", "DISABLELOCAL");
+		CmdTable.SetCell("Description", "Disables downloading of each link to local directory.");
+
+		CmdTable.AddRow();
+		CmdTable.SetCell("Command", "DIRECTORY <#directory>");
+		CmdTable.SetCell("Description", "Sets the local directory where the links will be saved.");
+
+		CmdTable.AddRow();
+		CmdTable.SetCell("Command", "HELP");
+		CmdTable.SetCell("Description", "This help.");
+
+		PutModule(CmdTable);
 		return;
-	}//...
+	}else if (command == "enable") {
+        }else if (command == "disable") {
+        }else if (command == "enablelocal"){
+	}else if (command == "disablelocal"){
+	}else if (command == "directory") {
+                //set directory
+        }else{
+		PutModule("Unknown command! Try HELP.");
+	}
 }
 
 void CUrlBufferModule::SaveSettings() {
@@ -181,7 +217,8 @@ void CUrlBufferModule::CheckLineForTrigger(const CString& sMessage, const CStrin
 	VCString words;
 	sMessage.Split(" ", words, false, "", "", true, true);
 	for (size_t a = 0; a < words.size(); a++) {
-                const CString& word = words[a];
+                CString& word = words[a];
+		word.MakeLower();
 		if(word == "!showlinks"){
 			//print links
 			PutModule("target: " + sTarget);
