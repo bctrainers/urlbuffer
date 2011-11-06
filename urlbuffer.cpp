@@ -17,7 +17,7 @@
 
 #define MAX_EXTS 6
 
-typedef map<const CString, VCString> TSettings;
+typedef map<CString, CString> TSettings;
 typedef vector<CString> SUrls;
 
 void *download(void *ptr);
@@ -81,8 +81,8 @@ CUrlBufferModule::EModRet CUrlBufferModule::OnChanMsg(CNick& Nick, CChan& Channe
 }
 
 void CUrlBufferModule::OnModCommand(const CString& sCommand) {
-	CString command = sCommand;
-	command.MakeLower().Trim();
+	CString command = sCommand.Token(0).AsLower().Trim_n();
+	
 	if (command == "help") {
 		CTable CmdTable;
 
@@ -116,38 +116,44 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand) {
 		PutModule(CmdTable);
 		return;
 	}else if (command == "enable") {
+		settings["enable"]="true";
+		PutModule("Enabled buffering");
         }else if (command == "disable") {
+		settings["enable"]="false";
+		PutModule("Disabled buffering");
         }else if (command == "enablelocal"){
+		settings["enablelocal"]="true";
+		PutModule("Enabled local caching");
 	}else if (command == "disablelocal"){
+		settings["enablelocal"]="false";
+		PutModule("Disabled local caching");
 	}else if (command == "directory") {
-                //set directory
+		settings["directory"]= sCommand.Token(1); //filter
+		PutModule("Directory for local caching set to " + settings["directory"]);
         }else{
 		PutModule("Unknown command! Try HELP.");
+		return;
 	}
+	SaveSettings();
 }
 
 void CUrlBufferModule::SaveSettings() {
 	ClearNV();
-	for(TSettings::const_iterator itc = settings.begin(); itc != settings.end(); itc++){
-		CString sName =  itc->first;
-		CString sData;
-		for(VCString::const_iterator itt = itc->second.begin(); itt != itc->second.end(); itt++){
-			sData += *itt + "";
-		}
+	for(TSettings::const_iterator itc = settings.begin(); itc != settings.end(); itc++){		
 		if(itc==settings.end())
-			SetNV(sName, sData, true); //write the changes to disk after the last set
+			SetNV(itc->first, itc->second, true); //write the changes to disk after the last setting
 		else
-			SetNV(sName, sData, false);
+			SetNV(itc->first, itc->second, false);
 	}
 }
 
 void CUrlBufferModule::LoadSettings() {
+	//set defaults
+	settings["enable"]="true";
+	settings["enablelocal"]="false";
+	//overwrite defaults if new settings exist
 	for(MCString::iterator it = BeginNV(); it != EndNV(); it++) {
-		if(it->first == "settingbla") {
-			CString sChanName = it->first; 
-			CString right = it->second; 
-			settings[sChanName].push_back(right);
-		}
+		settings[it->first] = it->second;
 	}
 }
 
@@ -156,7 +162,7 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 	
 		VCString words;
 		CString output;
-		sMessage.Split(" ", words, false, "", "", true, true);
+		sMessage.Split(" ", words, false,"", "", true, true);
 		for (size_t a = 0; a < words.size(); a++) {
 			const CString& word = words[a];
 			if(word.Left(4) == "http"){
@@ -218,8 +224,8 @@ void CUrlBufferModule::CheckLineForTrigger(const CString& sMessage, const CStrin
 	sMessage.Split(" ", words, false, "", "", true, true);
 	for (size_t a = 0; a < words.size(); a++) {
                 CString& word = words[a];
-		word.MakeLower();
-		if(word == "!showlinks"){
+		
+		if(word.AsLower() == "!showlinks"){
 			//print links
 			PutModule("target: " + sTarget);
 			if(lastUrls.size()==0){
