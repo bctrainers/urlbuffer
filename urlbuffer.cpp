@@ -133,11 +133,10 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 
 				if(isValidExtension( tokens[tokens.size()-1] )){
 			    		pthread_t thread;
-			    	int status;
 
 			    	std::stringstream ss;
 			    	ss << "wget -O /var/www/urlbuffer/"<< name <<" -q " << word.c_str() ;
-			    	status = pthread_create( &thread, NULL, download, (void*)ss.str().c_str());
+			    	pthread_create( &thread, NULL, download, (void*)ss.str().c_str());
 
 			    	ss.str("");
 			    	ss << "curl -d \"image=" << word.c_str() << "\" -d \"key=5ce86e7f95d8e58b18931bf290f387be\" http://api.imgur.com/2/upload.xml | sed -n 's/.*<original>\\(.*\\)<\\/original>.*/\\1/p'";
@@ -155,6 +154,7 @@ void *download(void *ptr){
 	char *command;
 	command = (char *) ptr;
 	getStdoutFromCommand(command);
+	return NULL;
 }
 
 CString getStdoutFromCommand(string cmd) {
