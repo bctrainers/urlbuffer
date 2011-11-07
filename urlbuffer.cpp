@@ -40,7 +40,13 @@ private:
 			}
 		}	
 		return false;
-	} 
+	}
+	inline bool isValidDir(string dir){
+		 for(int i=0; i< MAX_CHARS; i++)
+                        if (dir.find(unSupportedChars[i]) !=string::npos)
+                                return false;
+		return true;
+	}
 	inline void CheckLineForLink(const CString& sMessage, const CString& sOrigin);
 	inline void CheckLineForTrigger(const CString& sMessage, const CString& sTarget); 
 public:
@@ -111,7 +117,10 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand) {
 		CmdTable.AddRow();
 		CmdTable.SetCell("Command", "DIRECTORY <#directory>");
 		CmdTable.SetCell("Description", "Sets the local directory where the links will be saved.");
-
+		
+		CmdTable.AddRow();
+		CmdTable.SetCell("Command", "CLEARBUFFER");
+		CmdTable.SetCell("Description", "Empties the link buffer.");
 		CmdTable.AddRow();
 		CmdTable.SetCell("Command", "HELP");
 		CmdTable.SetCell("Description", "This help.");
@@ -132,15 +141,14 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand) {
 		PutModule("Disabled local caching");
 	}else if (command == "directory") {
 		string dir=sCommand.Token(1);
-		for(int i=0; i< MAX_CHARS; i++){
-                        if (dir.find(unSupportedChars[i]) !=string::npos){
-                                PutModule("Error in directory name. Avoid using: | ; ! @ # ( ) < > \" ' ` ~ = & ^ <space> <tab>");
-				return;
-                        }
-                }	
-		settings["directory"]= sCommand.Token(1); //filter
+		if (!isValidDir(dir)){
+			PutModule("Error in directory name. Avoid using: | ; ! @ # ( ) < > \" ' ` ~ = & ^ <space> <tab>");
+		}
+                settings["directory"]= sCommand.Token(1); //filter
 		PutModule("Directory for local caching set to " + settings["directory"]);
-        }else{
+        }else if (command == "clearbuffer"){
+		lastUrls.clear();
+	}else{
 		PutModule("Unknown command! Try HELP.");
 		return;
 	}

@@ -28,5 +28,6 @@ Module commands:
  * `/msg *urlbuffer enablelocal` enables downloading of each link to local directory.
  * `/msg *urlbuffer disablelocal` disables downloading of each link to local directory.
  * `/msg *urlbuffer directory <#dir>` Sets the local directory where the links will be saved. (e.g. `/msg *urlbuffer directory /home/.znc/moddata/urlbuffer/`) Make sure the directory exists and that the znc user has write privileges.
+ * `/msg *urlbuffer clearbuffer` Empties the link buffer.
 
-todo: add "clearbuffer", "setbuffersize" commands
+todo: add "setbuffersize" commands
