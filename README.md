@@ -21,6 +21,7 @@ Read [loading modules](http://wiki.znc.in/Modules#.28Un.29Loading_Modules) to le
 in your irc client displays the last links buffered.
 
 Module commands:
+
  * `/msg *urlbuffer help` displays help.
  * `/msg *urlbuffer enable` activates link buffering.
  * `/msg *urlbuffer disable` deactivates link buffering.
