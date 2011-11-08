@@ -61,8 +61,7 @@ private:
 	inline void CheckLineForLink(const CString& sMessage, const CString& sOrigin);
 	inline void CheckLineForTrigger(const CString& sMessage, const CString& sTarget); 
 public:
-	MODCONSTRUCTOR(CUrlBufferModule) 
-	{}
+	MODCONSTRUCTOR(CUrlBufferModule) {}
 
 	bool OnLoad(const CString& sArgs, CString& sErrorMsg);
 	~CUrlBufferModule(); 
@@ -74,9 +73,10 @@ public:
 };
 
 const string CUrlBufferModule::supportedExts[MAX_EXTS] = 
-{"jpg", "png", "gif", "jpeg", "bmp", "tiff"} ;
+				{"jpg", "png", "gif", "jpeg", "bmp", "tiff"} ;
+
 const char CUrlBufferModule::unSupportedChars[MAX_CHARS] = 
-{'|', ';', '!', '@', '#', '(', ')', '<', '>', '"',  '\'', '`', '~', '=', '&', '^'};
+				{'|', ';', '!', '@', '#', '(', ')', '<', '>', '"',  '\'', '`', '~', '=', '&', '^'};
 
 bool CUrlBufferModule::OnLoad(const CString& sArgs, CString& sErrorMsg) 
 {
@@ -84,8 +84,7 @@ bool CUrlBufferModule::OnLoad(const CString& sArgs, CString& sErrorMsg)
 	return true;
 }
 
-CUrlBufferModule::~CUrlBufferModule() 
-{}
+CUrlBufferModule::~CUrlBufferModule() {}
 
 CUrlBufferModule::EModRet CUrlBufferModule::OnUserMsg(CString& sTarget, CString& sMessage) 
 {
