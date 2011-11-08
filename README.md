@@ -17,8 +17,8 @@ Read [loading modules](http://wiki.znc.in/Modules#.28Un.29Loading_Modules) to le
 
 ##Commands 
 
-`!showlinks` 
-in your irc client displays the last links buffered.
+`!showlinks <#number>` 
+in your irc client displays the `<#number>` last links buffered. If you don't give a `<#number` the default (`<#buffersize>`) will be used.
 
 Module commands:
 
@@ -29,5 +29,6 @@ Module commands:
  * `/msg *urlbuffer disablelocal` disables downloading of each link to local directory.
  * `/msg *urlbuffer directory <#dir>` Sets the local directory where the links will be saved. (e.g. `/msg *urlbuffer directory /home/.znc/moddata/urlbuffer/`) Make sure the directory exists and that the znc user has write privileges.
  * `/msg *urlbuffer clearbuffer` Empties the link buffer.
+ * `/msg *urlbuffer buffersize <#size>` Sets the size of the link buffer. Only integers >=0.
+ * `/msg *urlbuffer showsettings` Displays all the current settings.
 
-todo: add "setbuffersize" commands

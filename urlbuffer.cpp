@@ -121,6 +121,15 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand) {
 		CmdTable.AddRow();
 		CmdTable.SetCell("Command", "CLEARBUFFER");
 		CmdTable.SetCell("Description", "Empties the link buffer.");
+	
+		CmdTable.AddRow();
+		CmdTable.SetCell("Command", "BUFFERSIZE <#size>");
+		CmdTable.SetCell("Description", "Sets the size of the link buffer. Only integers >=0.");
+		
+		CmdTable.AddRow();
+		CmdTable.SetCell("Command", "SHOWSETTINGS");
+		CmdTable.SetCell("Description", "Prints all the settings.");
+
 		CmdTable.AddRow();
 		CmdTable.SetCell("Command", "HELP");
 		CmdTable.SetCell("Description", "This help.");
@@ -140,14 +149,29 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand) {
 		settings["enablelocal"]="false";
 		PutModule("Disabled local caching");
 	}else if (command == "directory") {
-		string dir=sCommand.Token(1);
+		CString dir=sCommand.Token(1);
 		if (!isValidDir(dir)){
 			PutModule("Error in directory name. Avoid using: | ; ! @ # ( ) < > \" ' ` ~ = & ^ <space> <tab>");
+			return;
 		}
-                settings["directory"]= sCommand.Token(1); //filter
+		if(dir.Right(1)!="/") dir = dir + "/";
+                settings["directory"]= dir;
 		PutModule("Directory for local caching set to " + settings["directory"]);
         }else if (command == "clearbuffer"){
 		lastUrls.clear();
+	}else if (command == "buffersize"){
+		unsigned int bufSize;
+		std::istringstream size(sCommand.Token(1));
+		if(!(size >> bufSize)){
+			PutModule("Error in buffer size. Use only integers >= 0.");
+			return;
+		}
+		settings["buffersize"]= CString(bufSize);
+		PutModule("Buffer size set to " + settings["buffersize"]); 
+	}else if (command == "showsettings"){
+		for(TSettings::const_iterator itc = settings.begin(); itc != settings.end(); itc++){
+                        PutModule(itc->first.AsUpper() + " : " + itc->second);
+        	}
 	}else{
 		PutModule("Unknown command! Try HELP.");
 		return;
@@ -169,6 +193,7 @@ void CUrlBufferModule::LoadSettings() {
 	//set defaults
 	settings["enable"]="true";
 	settings["enablelocal"]="false";
+	settings["buffersize"]="10";
 	//overwrite defaults if new settings exist
 	for(MCString::iterator it = BeginNV(); it != EndNV(); it++) {
 		settings[it->first] = it->second;
@@ -183,9 +208,7 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 		sMessage.Split(" ", words, false,"", "", true, true);
 		for (size_t a = 0; a < words.size(); a++) {
 			const CString& word = words[a];
-			if(word.Left(4) == "http"){
-				//if you find an image download it, save it in the www directory and keep the new link in buffer
-
+			if(word.Left(4) == "http"){            //if you find an image download it, save it in the www directory and keep the new link in buffer
 				VCString tokens;
 				word.Split("/", tokens, false, "", "", true, true);
 				string name = tokens[tokens.size()-1];
@@ -195,8 +218,8 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 			    		pthread_t thread;
 
 			    		std::stringstream ss;
-			    		ss << "wget -O /var/www/urlbuffer/"<< name <<" -q " << word.c_str() ;
-			    		if(settings["enablelocal"]=="true") 
+			    		ss << "wget -O " << settings["directory"].c_str() << name <<" -q " << word.c_str() ;
+					if(settings["enablelocal"]=="true") 
 						pthread_create( &thread, NULL, download, (void*)ss.str().c_str());
 
 			    		ss.str("");
@@ -239,19 +262,27 @@ CString getStdoutFromCommand(string cmd) {
 }
 
 void CUrlBufferModule::CheckLineForTrigger(const CString& sMessage, const CString& sTarget){
-	//search for trigger in message
 	VCString words;
 	sMessage.Split(" ", words, false, "", "", true, true);
 	for (size_t a = 0; a < words.size(); a++) {
                 CString& word = words[a];
 		
 		if(word.AsLower() == "!showlinks"){
-			//print links
 			if(lastUrls.size()==0){
 				PutIRC("PRIVMSG " + sTarget + " :No links were found...");
-			}
-			for(unsigned int i=0; i< lastUrls.size(); i++){
-				PutIRC("PRIVMSG " + sTarget + " :" + lastUrls[i]);
+			}else {
+				unsigned int maxLinks;
+				std::istringstream ss(settings["buffersize"]);
+                                ss >> maxLinks;
+				
+				if (a+1 < words.size()){	
+					ss.clear();
+					ss.str(words[a+1]);
+					if((ss >> maxLinks).fail()){}
+				} 
+				for(unsigned int i=0; i< lastUrls.size() && i < maxLinks; i++){
+					PutIRC("PRIVMSG " + sTarget + " :" + lastUrls[i]);
+				}
 			}
 		}
 	}
