@@ -280,9 +280,10 @@ void CUrlBufferModule::CheckLineForTrigger(const CString& sMessage, const CStrin
 					ss.clear();
 					ss.str(words[a+1]);
 					if((ss >> maxLinks).fail()){}
-				} 
-				for(unsigned int i=0; i< lastUrls.size() && i < maxLinks; i++){
-					PutIRC("PRIVMSG " + sTarget + " :" + lastUrls[i]);
+				}
+				unsigned int maxSize = lastUrls.size()-1;
+				for(unsigned int i=0; i<=maxSize && i < maxLinks; i++){
+					PutIRC("PRIVMSG " + sTarget + " :" + lastUrls[maxSize-i]);
 				}
 			}
 		}
