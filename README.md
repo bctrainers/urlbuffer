@@ -18,7 +18,7 @@ Read [loading modules](http://wiki.znc.in/Modules#.28Un.29Loading_Modules) to le
 ##Commands 
 
 `!showlinks <#number>` 
-in your irc client displays the `<#number>` last links buffered. If you don't give a `<#number` the default (`<#buffersize>`) will be used.
+in your irc client displays the `<#number>` last links buffered. If you don't give a `<#number` the default (`<#buffersize>`) will be used. Each link is sent with a 2 second delay to avoid flooding users.
 
 Module commands:
 
@@ -31,6 +31,4 @@ Module commands:
  * `/msg *urlbuffer clearbuffer` Empties the link buffer.
  * `/msg *urlbuffer buffersize <#size>` Sets the size of the link buffer. Only integers >=0.
  * `/msg *urlbuffer showsettings` Displays all the current settings.
-
-Todo: fix flooding problem when someone spams with "showlinks"
 
