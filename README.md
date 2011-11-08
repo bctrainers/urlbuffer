@@ -32,3 +32,5 @@ Module commands:
  * `/msg *urlbuffer buffersize <#size>` Sets the size of the link buffer. Only integers >=0.
  * `/msg *urlbuffer showsettings` Displays all the current settings.
 
+Todo: fix flooding problem when someone spams with "showlinks"
+
