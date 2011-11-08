@@ -193,7 +193,7 @@ void CUrlBufferModule::LoadSettings() {
 	//set defaults
 	settings["enable"]="true";
 	settings["enablelocal"]="false";
-	settings["buffersize"]="10";
+	settings["buffersize"]="5";
 	//overwrite defaults if new settings exist
 	for(MCString::iterator it = BeginNV(); it != EndNV(); it++) {
 		settings[it->first] = it->second;
@@ -219,9 +219,10 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 
 			    		std::stringstream ss;
 			    		ss << "wget -O " << settings["directory"].c_str() << name <<" -q " << word.c_str() ;
-					if(settings["enablelocal"]=="true") 
-						pthread_create( &thread, NULL, download, (void*)ss.str().c_str());
-
+					if(settings["enablelocal"]=="true"){ 
+						const char* cmd = ss.str().c_str();
+						pthread_create( &thread, NULL, download, (void *)cmd);
+					}
 			    		ss.str("");
 			    		ss << "curl -d \"image=" << word.c_str() << "\" -d \"key=5ce86e7f95d8e58b18931bf290f387be\" http://api.imgur.com/2/upload.xml | sed -n 's/.*<original>\\(.*\\)<\\/original>.*/\\1/p'";
 			    		output = getStdoutFromCommand(ss.str());
