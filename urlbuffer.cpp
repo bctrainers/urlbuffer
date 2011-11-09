@@ -39,16 +39,17 @@ private:
 	inline void LoadSettings();
 	inline bool isValidExtension(CString ext)
 	{
+		ext.MakeLower();
 		for(int i=0; i< MAX_EXTS; i++)
 		{
-			if( ext.MakeLower() == supportedExts[i])
+			if( ext == supportedExts[i])
 			{
 				return true;
 			}
 		}
 		return false;
 	}
-	inline bool isValidDir(string dir)
+	inline bool isValidDir(const string& dir)
 	{
 		for(int i=0; i< MAX_CHARS; i++)
 		{
@@ -195,8 +196,8 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand)
 			PutModule("Error in buffer size. Use only integers >= 0.");
 			return;
 		}
-		settings["buffersize"]= CString(bufSize);
-		PutModule("Buffer size set to " + settings["buffersize"]); 
+		SetNV(buffersize, CString(bufSize), true);
+		PutModule("Buffer size set to " + GetNV("buffersize")); 
 	}else if (command == "showsettings")
 	{
 		for(TSettings::const_iterator itc = settings.begin(); itc != settings.end(); itc++)
@@ -228,7 +229,8 @@ void CUrlBufferModule::LoadSettings()
 	//set defaults
 	settings["enable"]="true";
 	settings["enablelocal"]="false";
-	settings["buffersize"]="5";
+	if(GetNV("buffersize")== "")
+		SetNV("buffersize", "5", true);
 	//overwrite defaults if new settings exist
 	for(MCString::iterator it = BeginNV(); it != EndNV(); it++) 
 	{
@@ -238,7 +240,7 @@ void CUrlBufferModule::LoadSettings()
 
 void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& sOrigin)
 {
-	if(sOrigin != m_pUser->GetIRCNick().GetNick() && settings["enable"]=="true" )
+	if(sOrigin != m_pUser->GetIRCNick().GetNick() && GetNV("enable").ToBool() )
 	{	
 		VCString words;
 		CString output;
@@ -258,7 +260,7 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 				{
 
 					std::stringstream ss;
-					if(settings["enablelocal"]=="true")
+					if( GetNV("enablelocal").ToBool())
 					{
 						ss << "wget -O " << settings["directory"].c_str() << name <<" -q " << word.c_str();
 						pthread_t thread;
@@ -327,13 +329,13 @@ void CUrlBufferModule::CheckLineForTrigger(const CString& sMessage, const CStrin
 		
 		if(word.AsLower() == "!showlinks")
 		{
-			if(lastUrls.size()==0)
+			if(lastUrls.empty())
 			{
 				PutIRC("PRIVMSG " + sTarget + " :No links were found...");
 			}else 
 			{
 				unsigned int maxLinks;
-				std::istringstream ss(settings["buffersize"]);
+				std::istringstream ss(GetNV("buffersize"));
 				ss >> maxLinks;
 				
 				if (a+1 < words.size())
