@@ -247,7 +247,7 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 					std::stringstream ss;
 					if( GetNV("enablelocal").ToBool())
 					{
-						ss << "wget -O " << GetNV("directory").c_str() << name <<" -q " << word.c_str();
+						ss << "wget -b -O " << GetNV("directory").c_str() << name <<" -q " << word.c_str();
 						pthread_t thread;
 						wcommand = ss.str();
 						pthread_create( &thread, NULL, &download, this);
