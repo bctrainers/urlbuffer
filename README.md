@@ -4,7 +4,7 @@ This znc module listens to traffic on irc channels and if an image link is detec
 
 ##Dependencies
 
-The module needs wget, sed, curl, a unix enviroment and a directory with write access to the znc user to work.
+The module needs wget, sed, curl, a unix enviroment and a directory with write access for the znc user, to work.
 
 ##Usage
 
@@ -27,7 +27,7 @@ Module commands:
  * `/msg *urlbuffer disable` deactivates link buffering.
  * `/msg *urlbuffer enablelocal` enables downloading of each link to local directory.
  * `/msg *urlbuffer disablelocal` disables downloading of each link to local directory.
- * `/msg *urlbuffer directory <#dir>` Sets the local directory where the links will be saved. (e.g. `/msg *urlbuffer directory /home/.znc/moddata/urlbuffer/`) Make sure the directory exists and that the znc user has write privileges.
+ * `/msg *urlbuffer directory <#dir>` Sets the local directory where the links will be saved. (e.g. `/msg *urlbuffer directory /home/username/.znc/moddata/urlbuffer/`) Make sure the directory exists and that the znc user has write privileges.
  * `/msg *urlbuffer clearbuffer` Empties the link buffer.
  * `/msg *urlbuffer buffersize <#size>` Sets the size of the link buffer. Only integers >=0.
  * `/msg *urlbuffer showsettings` Displays all the current settings.
