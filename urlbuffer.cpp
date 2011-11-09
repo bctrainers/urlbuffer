@@ -14,18 +14,15 @@
 #include "Modules.h"
 #include "Chan.h" 
 #include <pthread.h>
+#include <climits>
 
 #define MAX_EXTS 6
 #define MAX_CHARS 16
 
-typedef map<const CString, CString> TSettings;
-typedef vector<CString> SUrls;
-
 class CUrlBufferModule : public CModule 
 {
 private: 
-	TSettings settings;
-	SUrls lastUrls; 
+	VCString lastUrls;
 	
 	unsigned int linkNum;
 	CString target;
@@ -35,8 +32,7 @@ private:
 
 	static void* download(void *ptr);
 	static inline CString getStdoutFromCommand(string cmd);
-	inline void SaveSettings();
-	inline void LoadSettings();
+	inline void LoadDefaults();
 	inline bool isValidExtension(CString ext)
 	{
 		ext.MakeLower();
@@ -81,7 +77,7 @@ const char CUrlBufferModule::unSupportedChars[MAX_CHARS] =
 
 bool CUrlBufferModule::OnLoad(const CString& sArgs, CString& sErrorMsg) 
 {
-	LoadSettings(); 
+	LoadDefaults();
 	return true;
 }
 
@@ -90,7 +86,7 @@ CUrlBufferModule::~CUrlBufferModule() {}
 CUrlBufferModule::EModRet CUrlBufferModule::OnUserMsg(CString& sTarget, CString& sMessage) 
 {
 	CheckLineForLink(sMessage, "");
-	CheckLineForTrigger(sMessage, sTarget);
+	CheckLineForTrigger(sMessage, m_pUser->GetIRCNick().GetNick());
 	return CONTINUE;
 }
 
@@ -159,19 +155,23 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand)
 		return;
 	}else if (command == "enable") 
 	{
-		settings["enable"]="true";
+		SetNV("enable","true",true);
 		PutModule("Enabled buffering");
 	}else if (command == "disable") 
 	{
-		settings["enable"]="false";
+		SetNV("enable","false",true);
 		PutModule("Disabled buffering");
 	}else if (command == "enablelocal")
 	{
-		settings["enablelocal"]="true";
+		if(GetNV("directory") == "")
+		{
+			PutModule("Directory is not set. First set a directory and then enable local caching");
+		}
+		SetNV("enablelocal","true",true);
 		PutModule("Enabled local caching");
 	}else if (command == "disablelocal")
 	{
-		settings["enablelocal"]="false";
+		SetNV("enablelocal", "false", true);
 		PutModule("Disabled local caching");
 	}else if (command == "directory") 
 	{
@@ -182,59 +182,44 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand)
 			return;
 		}
 		if(dir.Right(1)!="/") dir = dir + "/";
-		settings["directory"]= dir;
-		PutModule("Directory for local caching set to " + settings["directory"]);
+		SetNV("directory", dir, true);
+		PutModule("Directory for local caching set to " + GetNV("directory"));
 	}else if (command == "clearbuffer")
 	{
 		lastUrls.clear();
 	}else if (command == "buffersize")
 	{
-		unsigned int bufSize;
-		std::istringstream size(sCommand.Token(1));
-		if(!(size >> bufSize))
+		unsigned int bufSize = sCommand.Token(1).ToUInt();
+		if(bufSize==0 || bufSize==UINT_MAX)
 		{
 			PutModule("Error in buffer size. Use only integers >= 0.");
 			return;
 		}
-		SetNV(buffersize, CString(bufSize), true);
+		SetNV("buffersize", CString(bufSize), true);
 		PutModule("Buffer size set to " + GetNV("buffersize")); 
 	}else if (command == "showsettings")
 	{
-		for(TSettings::const_iterator itc = settings.begin(); itc != settings.end(); itc++)
+		for(MCString::iterator it = BeginNV(); it != EndNV(); it++)
 		{
-			PutModule(itc->first.AsUpper() + " : " + itc->second);
+			PutModule(it->first.AsUpper() + " : " + it->second);
 		}
 	}else
 	{
 		PutModule("Unknown command! Try HELP.");
 		return;
 	}
-	SaveSettings();
 }
 
-void CUrlBufferModule::SaveSettings() 
+void CUrlBufferModule::LoadDefaults() 
 {
-	ClearNV();
-	for(TSettings::const_iterator itc = settings.begin(); itc != settings.end(); itc++)
-	{
-		if(itc==settings.end())
-		SetNV(itc->first, itc->second, true); //write the changes to disk after the last setting
-		else
-		SetNV(itc->first, itc->second, false);
+	if(GetNV("enable")==""){
+		SetNV("enable", "true", true);
 	}
-}
-
-void CUrlBufferModule::LoadSettings() 
-{
-	//set defaults
-	settings["enable"]="true";
-	settings["enablelocal"]="false";
-	if(GetNV("buffersize")== "")
+	if(GetNV("enablelocal")==""){
+		SetNV("enablelocal", "false", true);
+	}
+	if(GetNV("buffersize")== ""){
 		SetNV("buffersize", "5", true);
-	//overwrite defaults if new settings exist
-	for(MCString::iterator it = BeginNV(); it != EndNV(); it++) 
-	{
-		settings[it->first] = it->second;
 	}
 }
 
@@ -262,7 +247,7 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 					std::stringstream ss;
 					if( GetNV("enablelocal").ToBool())
 					{
-						ss << "wget -O " << settings["directory"].c_str() << name <<" -q " << word.c_str();
+						ss << "wget -O " << GetNV("directory").c_str() << name <<" -q " << word.c_str();
 						pthread_t thread;
 						wcommand = ss.str();
 						pthread_create( &thread, NULL, &download, this);
@@ -325,8 +310,7 @@ void CUrlBufferModule::CheckLineForTrigger(const CString& sMessage, const CStrin
 	sMessage.Split(" ", words, false, "", "", true, true);
 	for (size_t a = 0; a < words.size(); a++) 
 	{
-		CString& word = words[a];
-		
+		CString& word = words[a];	
 		if(word.AsLower() == "!showlinks")
 		{
 			if(lastUrls.empty())
@@ -334,16 +318,15 @@ void CUrlBufferModule::CheckLineForTrigger(const CString& sMessage, const CStrin
 				PutIRC("PRIVMSG " + sTarget + " :No links were found...");
 			}else 
 			{
-				unsigned int maxLinks;
-				std::istringstream ss(GetNV("buffersize"));
-				ss >> maxLinks;
-				
+				unsigned int maxLinks = GetNV("buffersize").ToUInt();
+								
 				if (a+1 < words.size())
 				{
-					ss.clear();
-					ss.str(words[a+1]);
-					if((ss >> maxLinks).fail())
-					{}
+					unsigned int size = words[a+1].ToUInt();
+					if(size!=0 && size<UINT_MAX) //if it was a valid number
+					{
+						maxLinks = size;
+					}
 				}
 				linkNum = maxLinks;
 				target = sTarget;
@@ -356,3 +339,4 @@ void CUrlBufferModule::CheckLineForTrigger(const CString& sMessage, const CStrin
 }
 
 MODULEDEFS(CUrlBufferModule, "Module that caches images from links posted on irc channels.")
+
