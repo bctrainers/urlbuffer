@@ -201,7 +201,7 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand)
 		// Check if file exists and is directory
 		if (dir.empty() || !CFile::Exists(dir) || !CFile::IsDir(dir, false))
 		{
-			PutModule("Invalid log path or no write access to ["+ sCommand.Token(1) +"].");
+			PutModule("Invalid path or no write access to ["+ sCommand.Token(1) +"].");
 			return;
 		} 
 		SetNV("directory", dir, true);
