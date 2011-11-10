@@ -31,7 +31,7 @@ private:
 	static const char unSupportedChars[MAX_CHARS];
 
 	static void* download(void *ptr);
-	static inline CString getStdoutFromCommand(string cmd);
+	static inline CString getStdoutFromCommand(const string& cmd);
 	inline void LoadDefaults();
 	inline bool isValidExtension(CString ext)
 	{
@@ -247,13 +247,13 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 					std::stringstream ss;
 					if( GetNV("enablelocal").ToBool())
 					{
-						ss << "wget -b -O " << GetNV("directory").c_str() << name <<" -q " << word.c_str();
+						ss << "wget -b -O " << GetNV("directory").c_str() << name <<" -q " << word.c_str() << " 2>&1";
 						pthread_t thread;
 						wcommand = ss.str();
 						pthread_create( &thread, NULL, &download, this);
 					}
 					ss.str("");
-					ss << "curl -d \"image=" << word.c_str() << "\" -d \"key=5ce86e7f95d8e58b18931bf290f387be\" http://api.imgur.com/2/upload.xml | sed -n 's/.*<original>\\(.*\\)<\\/original>.*/\\1/p'";
+					ss << "curl -d \"image=" << word.c_str() << "\" -d \"key=5ce86e7f95d8e58b18931bf290f387be\" http://api.imgur.com/2/upload.xml | sed -n 's/.*<original>\\(.*\\)<\\/original>.*/\\1/p' 2>&1";
 					output = getStdoutFromCommand(ss.str());
 					lastUrls.push_back(output);
 				}
@@ -269,11 +269,10 @@ void *CUrlBufferModule::download(void *ptr)
 	return NULL;
 }
 
-CString CUrlBufferModule::getStdoutFromCommand(string cmd) 
+CString CUrlBufferModule::getStdoutFromCommand(const string& cmd) 
 {
 	string data="";
 	char buffer[128];
-	cmd.append(" 2>&1");
 	FILE* stream = popen(cmd.c_str(), "r");
 	if (stream == NULL || !stream || ferror(stream))
 	{ 
