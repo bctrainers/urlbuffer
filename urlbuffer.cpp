@@ -269,7 +269,7 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 					std::stringstream ss;
 					if( GetNV("enablelocal").ToBool())
 					{
-						CString dir = GetNV("directory") + convertTime(CString("%d-%m-%Y")) + "/";
+						CString dir = GetNV("directory") + convertTime("%d-%m-%Y") + "/";
 						if(!CFile::Exists(dir) && !CFile::IsDir(dir, false))
 						{
 							CDir::MakeDir(dir, 0755);
