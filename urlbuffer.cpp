@@ -13,6 +13,7 @@
 #include "Nick.h"
 #include "Modules.h"
 #include "Chan.h" 
+#include "FileUtils.h"
 #include <pthread.h>
 #include <climits>
 
@@ -33,6 +34,22 @@ private:
 	static void* download(void *ptr);
 	static inline CString getStdoutFromCommand(const string& cmd);
 	inline void LoadDefaults();
+	inline CString convertTime(const CString& str)
+	{
+		time_t curtime;
+		tm* timeinfo;
+		char buffer[1024];
+
+		time(&curtime);
+		curtime += (time_t) (m_pUser->GetTimezoneOffset() * 60 * 60);
+		timeinfo = localtime(&curtime);
+
+		if (!strftime(buffer, sizeof(buffer), str.c_str(), timeinfo))
+		{
+			return "";
+		}
+		return CString(buffer);
+	}
 	inline bool isValidExtension(CString ext)
 	{
 		ext.MakeLower();
@@ -175,13 +192,18 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand)
 		PutModule("Disabled local caching");
 	}else if (command == "directory") 
 	{
-		CString dir=sCommand.Token(1);
+		CString dir=sCommand.Token(1).Replace_n("//", "/").TrimRight_n("/") + "/";
 		if (!isValidDir(dir))
 		{
 			PutModule("Error in directory name. Avoid using: | ; ! @ # ( ) < > \" ' ` ~ = & ^ <space> <tab>");
 			return;
 		}
-		if(dir.Right(1)!="/") dir = dir + "/";
+		// Check if file exists and is directory
+		if (dir.empty() || !CFile::Exists(dir) || !CFile::IsDir(dir, false))
+		{
+			PutModule("Invalid log path or no write access to ["+ sCommand.Token(1) +"].");
+			return;
+		} 
 		SetNV("directory", dir, true);
 		PutModule("Directory for local caching set to " + GetNV("directory"));
 	}else if (command == "clearbuffer")
@@ -247,7 +269,12 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 					std::stringstream ss;
 					if( GetNV("enablelocal").ToBool())
 					{
-						ss << "wget -b -O " << GetNV("directory").c_str() << name <<" -q " << word.c_str() << " 2>&1";
+						CString dir = GetNV("directory") + convertTime(CString("%d-%m-%Y")) + "/";
+						if(!CFile::Exists(dir) && !CFile::IsDir(dir, false))
+						{
+							CDir::MakeDir(dir, 0755);
+						}
+						ss << "wget -b -O " << dir.c_str() << name <<" -q " << word.c_str() << " 2>&1";
 						pthread_t thread;
 						wcommand = ss.str();
 						pthread_create( &thread, NULL, &download, this);
