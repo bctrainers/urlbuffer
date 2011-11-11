@@ -149,6 +149,14 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand)
 		CmdTable.SetCell("Description", "Disables downloading of each link to local directory.");
 
 		CmdTable.AddRow();
+		CmdTable.SetCell("Command","ENABLEPUBLIC");
+		CmdTable.SetCell("Description", "Enables the usage of !showlinks publicly, by other users.");
+
+		CmdTable.AddRow();
+                CmdTable.SetCell("Command","DISABLEPUBLIC");
+                CmdTable.SetCell("Description", "Disables the usage of !showlinks publicly, by other users.");
+
+		CmdTable.AddRow();
 		CmdTable.SetCell("Command", "DIRECTORY <#directory>");
 		CmdTable.SetCell("Description", "Sets the local directory where the links will be saved.");
 		
@@ -190,7 +198,15 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand)
 	{
 		SetNV("enablelocal", "false", true);
 		PutModule("Disabled local caching");
-	}else if (command == "directory") 
+	}else if (command == "enablepublic")
+	{
+		SetNV("enablepublic", "true", true);
+		PutModule("Enabled public usage of showlinks.");
+	}else if (command == "disablepublic")
+        {
+                SetNV("enablepublic", "false", true);
+                PutModule("Disabled public usage of showlinks.");
+        }else if (command == "directory") 
 	{
 		CString dir=sCommand.Token(1).Replace_n("//", "/").TrimRight_n("/") + "/";
 		if (!isValidDir(dir))
@@ -242,6 +258,9 @@ void CUrlBufferModule::LoadDefaults()
 	}
 	if(GetNV("buffersize")== ""){
 		SetNV("buffersize", "5", true);
+	}
+	if(GetNV("enablepublic")==""){
+		SetNV("enablepublic", "true", true);
 	}
 }
 
@@ -332,33 +351,36 @@ void *CUrlBufferModule::sendLinks(void *ptr)
 
 void CUrlBufferModule::CheckLineForTrigger(const CString& sMessage, const CString& sTarget)
 {
-	VCString words;
-	sMessage.Split(" ", words, false, "", "", true, true);
-	for (size_t a = 0; a < words.size(); a++) 
+	if(GetNV("enablepublic").ToBool())
 	{
-		CString& word = words[a];	
-		if(word.AsLower() == "!showlinks")
+		VCString words;
+		sMessage.Split(" ", words, false, "", "", true, true);
+		for (size_t a = 0; a < words.size(); a++) 
 		{
-			if(lastUrls.empty())
+			CString& word = words[a];	
+			if(word.AsLower() == "!showlinks")
 			{
-				PutIRC("PRIVMSG " + sTarget + " :No links were found...");
-			}else 
-			{
-				unsigned int maxLinks = GetNV("buffersize").ToUInt();
-								
-				if (a+1 < words.size())
+				if(lastUrls.empty())
 				{
-					unsigned int size = words[a+1].ToUInt();
-					if(size!=0 && size<UINT_MAX) //if it was a valid number
+					PutIRC("PRIVMSG " + sTarget + " :No links were found...");
+				}else 
+				{
+					unsigned int maxLinks = GetNV("buffersize").ToUInt();
+								
+					if (a+1 < words.size())
 					{
-						maxLinks = size;
+						unsigned int size = words[a+1].ToUInt();
+						if(size!=0 && size<UINT_MAX) //if it was a valid number
+						{
+							maxLinks = size;
+						}
 					}
-				}
-				linkNum = maxLinks;
-				target = sTarget;
+					linkNum = maxLinks;
+					target = sTarget;
 
-				pthread_t thread;
-				pthread_create( &thread, NULL, &sendLinks, this);
+					pthread_t thread;
+					pthread_create( &thread, NULL, &sendLinks, this);
+				}
 			}
 		}
 	}
