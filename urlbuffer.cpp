@@ -173,6 +173,10 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand)
 		CmdTable.SetCell("Description", "Prints all the settings.");
 
 		CmdTable.AddRow();
+		CmdTable.SetCell("Command", "SHOWLINKS <#number>");
+		CmdTable.SetCell("Description", "Prints <#number> or <#buffersize> number of cached links.");
+
+		CmdTable.AddRow();
 		CmdTable.SetCell("Command", "HELP");
 		CmdTable.SetCell("Description", "This help.");
 
@@ -241,6 +245,25 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand)
 		{
 			PutModule(it->first.AsUpper() + " : " + it->second);
 		}
+	}else if (command == "showlinks")
+	{
+		 if(lastUrls.empty())
+                 {
+                        PutModule("No links were found...");
+                 }else
+                 {
+                        unsigned int maxLinks = GetNV("buffersize").ToUInt();
+                        unsigned int size = sCommand.Token(1).ToUInt();
+                        if(size!=0 && size<UINT_MAX) //if it was a valid number
+                        {
+                              maxLinks = size;
+                        }
+			unsigned int maxSize = lastUrls.size()-1;
+			for(unsigned int i=0; i<=maxSize && i< maxLinks; i++)
+		        {
+                		PutModule(lastUrls[maxSize-i].Trim_n());
+        		}
+  		 }
 	}else
 	{
 		PutModule("Unknown command! Try HELP.");

@@ -27,8 +27,11 @@ Module commands:
  * `/msg *urlbuffer disable` deactivates link buffering.
  * `/msg *urlbuffer enablelocal` enables downloading of each link to local directory.
  * `/msg *urlbuffer disablelocal` disables downloading of each link to local directory.
+ * `/msg *urlbuffer enablepublic` enables public usage of !showlinks by any user.
+ * `/msg *urlbuffer disablepublic` disables public usage of !showlinks by any user.
  * `/msg *urlbuffer directory <#dir>` Sets the local directory where the links will be saved. (e.g. `/msg *urlbuffer directory /home/username/.znc/moddata/urlbuffer/`) Make sure the directory exists and that the znc user has write privileges.
- * `/msg *urlbuffer clearbuffer` Empties the link buffer.
- * `/msg *urlbuffer buffersize <#size>` Sets the size of the link buffer. Only integers >=0.
- * `/msg *urlbuffer showsettings` Displays all the current settings.
+ * `/msg *urlbuffer clearbuffer` empties the link buffer.
+ * `/msg *urlbuffer buffersize <#size>` sets the size of the link buffer. Only integers >=0.
+ * `/msg *urlbuffer showsettings` displays all the current settings.
+ * `/msg *urlbuffer showlinks <#number>` displays the `<#number>` last links.
 
