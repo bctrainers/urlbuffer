@@ -322,9 +322,13 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 						pthread_create( &thread, NULL, &download, this);
 					}
 					ss.str("");
-					ss << "curl -d \"image=" << word.c_str() << "\" -d \"key=5ce86e7f95d8e58b18931bf290f387be\" http://api.imgur.com/2/upload.xml | sed -n 's/.*<original>\\(.*\\)<\\/original>.*/\\1/p' 2>&1";
-					output = getStdoutFromCommand(ss.str());
-					lastUrls.push_back(output);
+					if (!word.WildCmp("*imgur*")) {
+						ss << "curl -d \"image=" << word.c_str() << "\" -d \"key=5ce86e7f95d8e58b18931bf290f387be\" http://api.imgur.com/2/upload.xml | sed -n 's/.*<original>\\(.*\\)<\\/original>.*/\\1/p' 2>&1";
+						output = getStdoutFromCommand(ss.str());
+						lastUrls.push_back(output);
+					}else {
+						lastUrls.push_back(word);
+					}
 				}
 			}
 		}
