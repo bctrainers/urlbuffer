@@ -34,4 +34,4 @@ Module commands:
  * `/msg *urlbuffer buffersize <#size>` sets the size of the link buffer. Only integers >=0.
  * `/msg *urlbuffer showsettings` displays all the current settings.
  * `/msg *urlbuffer showlinks <#number>` displays the `<#number>` last links.
-
+ * `/msg *urlbuffer bufferalllinks` toggles between the buffering of all links and only images.

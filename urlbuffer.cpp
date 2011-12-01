@@ -173,6 +173,10 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand)
 		CmdTable.SetCell("Description", "Prints all the settings.");
 
 		CmdTable.AddRow();
+                CmdTable.SetCell("Command", "BUFFERALLLINKS");
+                CmdTable.SetCell("Description", "Toggles the buffering of all links or only image links.");
+
+		CmdTable.AddRow();
 		CmdTable.SetCell("Command", "SHOWLINKS <#number>");
 		CmdTable.SetCell("Description", "Prints <#number> or <#buffersize> number of cached links.");
 
@@ -245,6 +249,9 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand)
 		{
 			PutModule(it->first.AsUpper() + " : " + it->second);
 		}
+	}else if(command == "bufferalllinks"){
+		SetNV("bufferalllinks", CString(!GetNV("bufferalllinks").ToBool()), true); 
+		PutModule( CString(GetNV("bufferalllinks").ToBool()?"Enabled":"Disabled") + " buffering of all links.");
 	}else if (command == "showlinks")
 	{
 		 if(lastUrls.empty())
@@ -285,6 +292,9 @@ void CUrlBufferModule::LoadDefaults()
 	if(GetNV("enablepublic")==""){
 		SetNV("enablepublic", "true", true);
 	}
+	if(GetNV("bufferalllinks")==""){
+		SetNV("bufferalllinks", "false", true);
+	}
 }
 
 void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& sOrigin)
@@ -296,8 +306,8 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 		sMessage.Split(" ", words, false,"", "", true, true);
 		for (size_t a = 0; a < words.size(); a++) 
 		{
-			const CString& word = words[a];
-			if(word.Left(4) == "http")
+			CString& word = words[a];
+			if(word.Left(4) == "http" || word.Left(3) == "www.")
 			{            
 				//if you find an image download it, save it in the www directory and keep the new link in buffer
 				VCString tokens;
@@ -305,9 +315,9 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 				string name = tokens[tokens.size()-1];
 				word.Split(".", tokens, false, "", "", true, true);
 
+				//if it's an image link download/upload it else just keep the link
 				if(isValidExtension( tokens[tokens.size()-1] ))
 				{
-
 					std::stringstream ss;
 					if( GetNV("enablelocal").ToBool())
 					{
@@ -329,6 +339,8 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 					}else {
 						lastUrls.push_back(word);
 					}
+				} else if(GetNV("bufferalllinks").ToBool()){
+					lastUrls.push_back(word); 
 				}
 			}
 		}
