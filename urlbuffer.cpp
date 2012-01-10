@@ -23,11 +23,10 @@
 class CUrlBufferModule : public CModule 
 {
 private: 
-	VCString lastUrls;
+	VCString lastUrls, nicks;
 	
 	unsigned int linkNum;
-	CString target;
-	CString wcommand;
+	CString target, wcommand;
 	static const string supportedExts[MAX_EXTS];
 	static const char unSupportedChars[MAX_CHARS];
 
@@ -56,9 +55,7 @@ private:
 		for(int i=0; i< MAX_EXTS; i++)
 		{
 			if( ext == supportedExts[i])
-			{
 				return true;
-			}
 		}
 		return false;
 	}
@@ -199,6 +196,7 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand)
 		if(GetNV("directory") == "")
 		{
 			PutModule("Directory is not set. First set a directory and then enable local caching");
+			return;
 		}
 		SetNV("enablelocal","true",true);
 		PutModule("Enabled local caching");
@@ -233,6 +231,7 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand)
 	}else if (command == "clearbuffer")
 	{
 		lastUrls.clear();
+		nicks.clear();
 	}else if (command == "buffersize")
 	{
 		unsigned int bufSize = sCommand.Token(1).ToUInt();
@@ -255,26 +254,22 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand)
 	}else if (command == "showlinks")
 	{
 		 if(lastUrls.empty())
-                 {
                         PutModule("No links were found...");
-                 }else
+                 else
                  {
                         unsigned int maxLinks = GetNV("buffersize").ToUInt();
                         unsigned int size = sCommand.Token(1).ToUInt();
                         if(size!=0 && size<UINT_MAX) //if it was a valid number
-                        {
                               maxLinks = size;
-                        }
 			unsigned int maxSize = lastUrls.size()-1;
 			for(unsigned int i=0; i<=maxSize && i< maxLinks; i++)
 		        {
-                		PutModule(lastUrls[maxSize-i].Trim_n());
+                		PutModule(nicks[maxSize-i] + ": " + lastUrls[maxSize-i]);
         		}
   		 }
 	}else
 	{
 		PutModule("Unknown command! Try HELP.");
-		return;
 	}
 }
 
@@ -303,11 +298,11 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 	{	
 		VCString words;
 		CString output;
-		sMessage.Split(" ", words, false,"", "", true, true);
+		sMessage.Split(" ", words, false, "", "", true, true);
 		for (size_t a = 0; a < words.size(); a++) 
 		{
 			CString& word = words[a];
-			if(word.Left(4) == "http" || word.Left(3) == "www.")
+			if(word.Left(4) == "http" || word.Left(4) == "www.")
 			{            
 				//if you find an image download it, save it in the www directory and keep the new link in buffer
 				VCString tokens;
@@ -321,7 +316,7 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 					std::stringstream ss;
 					if( GetNV("enablelocal").ToBool())
 					{
-						CString dir = GetNV("directory") + convertTime("%d-%m-%Y") + "/";
+						CString dir = GetNV("directory") + convertTime("%Y-%m-%d") + "/";
 						if(!CFile::Exists(dir) && !CFile::IsDir(dir, false))
 						{
 							CDir::MakeDir(dir, 0755);
@@ -342,6 +337,7 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 				} else if(GetNV("bufferalllinks").ToBool()){
 					lastUrls.push_back(word); 
 				}
+                                nicks.push_back( (sOrigin.empty())? m_pUser->GetIRCNick().GetNick() : sOrigin );
 			}
 		}
 	}
@@ -366,9 +362,7 @@ CString CUrlBufferModule::getStdoutFromCommand(const string& cmd)
 	while (!feof(stream))
 	{
 		if (fgets(buffer, 128, stream) != NULL)
-		{
 			data.append(buffer);
-		}
 	}
 	pclose(stream);
 	return CString(data);
@@ -377,13 +371,14 @@ CString CUrlBufferModule::getStdoutFromCommand(const string& cmd)
 void *CUrlBufferModule::sendLinks(void *ptr)
 {
 	CUrlBufferModule *caller = static_cast<CUrlBufferModule*> (ptr);
-	vector<CString> links = caller->lastUrls;
+	VCString links = caller->lastUrls;
+        VCString nicks = caller->nicks;
 	unsigned int maxSize = links.size()-1;
 
 	for(unsigned int i=0; i<=maxSize && i<caller->linkNum; i++)
 	{
 		sleep(2);
-		caller->PutIRC("PRIVMSG " + caller->target + " :" + links[maxSize-i]);
+		caller->PutIRC("PRIVMSG " + caller->target + " :" + nicks[maxSize-i] + ": "+ links[maxSize-i]);
 	}
 	return NULL;
 }
@@ -400,9 +395,8 @@ void CUrlBufferModule::CheckLineForTrigger(const CString& sMessage, const CStrin
 			if(word.AsLower() == "!showlinks")
 			{
 				if(lastUrls.empty())
-				{
 					PutIRC("PRIVMSG " + sTarget + " :No links were found...");
-				}else 
+				else 
 				{
 					unsigned int maxLinks = GetNV("buffersize").ToUInt();
 								
@@ -410,9 +404,7 @@ void CUrlBufferModule::CheckLineForTrigger(const CString& sMessage, const CStrin
 					{
 						unsigned int size = words[a+1].ToUInt();
 						if(size!=0 && size<UINT_MAX) //if it was a valid number
-						{
 							maxLinks = size;
-						}
 					}
 					linkNum = maxLinks;
 					target = sTarget;
@@ -425,5 +417,5 @@ void CUrlBufferModule::CheckLineForTrigger(const CString& sMessage, const CStrin
 	}
 }
 
-MODULEDEFS(CUrlBufferModule, "Module that caches images from links posted on irc channels.")
+MODULEDEFS(CUrlBufferModule, "Module that caches locally images/links posted on irc channels.")
 
