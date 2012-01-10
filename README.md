@@ -1,6 +1,6 @@
 #Urlbuffer
 
-This znc module listens to traffic on irc channels and if an image link is detected it downloads the image to a given directory and reuploads it to imgur.com.
+This znc module listens to traffic on irc channels and scans for image links (or just links). If an image link is detected it downloads the image to a given directory and reuploads it to imgur.com.
 
 ##Dependencies
 
