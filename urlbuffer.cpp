@@ -26,11 +26,10 @@ private:
 	VCString lastUrls, nicks;
 	
 	unsigned int linkNum;
-	CString target, wcommand;
+	CString target;
 	static const string supportedExts[MAX_EXTS];
 	static const char unSupportedChars[MAX_CHARS];
 
-	static void* download(void *ptr);
 	static inline CString getStdoutFromCommand(const CString& cmd);
 	inline void LoadDefaults();
 	inline CString convertTime(const CString& str)
@@ -313,7 +312,7 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 				//if it's an image link download/upload it else just keep the link
 				if(isValidExtension( tokens[tokens.size()-1] ))
 				{
-					std::stringstream ss;
+                                        std::stringstream ss;
 					if( GetNV("enablelocal").ToBool())
 					{
 						CString dir = GetNV("directory") + convertTime("%Y-%m-%d") + "/";
@@ -322,9 +321,7 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 							CDir::MakeDir(dir, 0755);
 						}
 						ss << "wget -b -O " << dir.c_str() << name <<" -q " << word.c_str() << " 2>&1";
-						pthread_t thread;
-						wcommand = ss.str();
-						pthread_create( &thread, NULL, &download, this);
+                                                getStdoutFromCommand(ss.str());
 					}
 					ss.str("");
 					if (!word.WildCmp("*imgur*")) {
@@ -341,13 +338,6 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 			}
 		}
 	}
-}
-
-void *CUrlBufferModule::download(void *ptr) 
-{
-	CUrlBufferModule *caller = static_cast<CUrlBufferModule*>(ptr);
-	getStdoutFromCommand(caller->wcommand);
-	return NULL;
 }
 
 CString CUrlBufferModule::getStdoutFromCommand(const CString& cmd) 
