@@ -31,7 +31,7 @@ private:
 	static const char unSupportedChars[MAX_CHARS];
 
 	static void* download(void *ptr);
-	static inline CString getStdoutFromCommand(const string& cmd);
+	static inline CString getStdoutFromCommand(const CString& cmd);
 	inline void LoadDefaults();
 	inline CString convertTime(const CString& str)
 	{
@@ -350,14 +350,14 @@ void *CUrlBufferModule::download(void *ptr)
 	return NULL;
 }
 
-CString CUrlBufferModule::getStdoutFromCommand(const string& cmd) 
+CString CUrlBufferModule::getStdoutFromCommand(const CString& cmd) 
 {
 	string data="";
 	char buffer[128];
 	FILE* stream = popen(cmd.c_str(), "r");
 	if (stream == NULL || !stream || ferror(stream))
 	{ 
-		return CString("Error!");
+		return "Error!";
 	}
 	while (!feof(stream))
 	{
@@ -365,7 +365,7 @@ CString CUrlBufferModule::getStdoutFromCommand(const string& cmd)
 			data.append(buffer);
 	}
 	pclose(stream);
-	return CString(data);
+	return data;
 }
 
 void *CUrlBufferModule::sendLinks(void *ptr)
@@ -410,7 +410,10 @@ void CUrlBufferModule::CheckLineForTrigger(const CString& sMessage, const CStrin
 					target = sTarget;
 
 					pthread_t thread;
-					pthread_create( &thread, NULL, &sendLinks, this);
+                                        pthread_attr_t attr;
+                                        pthread_attr_init(&attr);
+                                        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+					pthread_create( &thread, &attr, &sendLinks, this);
 				}
 			}
 		}
