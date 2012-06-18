@@ -270,7 +270,7 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand)
 		PutModule( CString(GetNV("bufferalllinks").ToBool()?"Enabled":"Disabled") + " buffering of all links.");
 	} else if(command == "reupload"){
                 SetNV("reupload", CString(!GetNV("reupload").ToBool()), true);
-                PutModule( CString(GetNV("reupload").ToBool()?"Enabled":"Disabled") + " buffering of all links.");
+                PutModule( CString(GetNV("reupload").ToBool()?"Enabled":"Disabled") + " reuploading of images.");
     } else if (command == "showlinks")
 	{
 		 if(lastUrls.empty())
