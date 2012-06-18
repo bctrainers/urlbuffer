@@ -22,17 +22,29 @@
 
 class CUrlBufferModule : public CModule 
 {
-private: 
+private:
+    /* Vectors containing the last urls posted + the nicknames of the users posting them. */
 	VCString lastUrls, nicks;
 	
+    /* Holds the number of links to be posted when the "!showlinks <num>" command is issued. */
 	unsigned int linkNum;
-	CString target;
-	static const string supportedExts[MAX_EXTS];
-	static const char unSupportedChars[MAX_CHARS];
 
+    /* The user that requested the last links posted. */ 
+	CString target;
+
+    /* Supported file extensions in links that should be downloaded. */
+	static const string supportedExts[MAX_EXTS];
+	
+    /* Unsupported characters that should be ignored when found in strings describing file directories. */
+    static const char unSupportedChars[MAX_CHARS];
+
+    /* Executes the given command in a unix pipeline and returns the result. */
 	static inline CString getStdoutFromCommand(const CString& cmd);
-	inline void LoadDefaults();
-	inline CString convertTime(const CString& str)
+	
+    /* Load the default options if no other were found. */
+    inline void LoadDefaults();
+	
+    inline CString convertTime(const CString& str)
 	{
 		time_t curtime;
 		tm* timeinfo;
@@ -48,6 +60,7 @@ private:
 		}
 		return CString(buffer);
 	}
+
 	inline bool isValidExtension(CString ext)
 	{
 		ext.MakeLower();
@@ -58,6 +71,7 @@ private:
 		}
 		return false;
 	}
+
 	inline bool isValidDir(const string& dir)
 	{
 		for(int i=0; i< MAX_CHARS; i++)
@@ -74,7 +88,7 @@ public:
 	MODCONSTRUCTOR(CUrlBufferModule) {}
 
 	bool OnLoad(const CString& sArgs, CString& sErrorMsg);
-	~CUrlBufferModule(); 
+	virtual ~CUrlBufferModule(); 
 	EModRet OnUserMsg(CString& sTarget, CString& sMessage);
 	EModRet OnPrivMsg(CNick& Nick, CString& sMessage);
 	EModRet OnChanMsg(CNick& Nick, CChan& Channel, CString& sMessage);
@@ -149,8 +163,8 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand)
 		CmdTable.SetCell("Description", "Enables the usage of !showlinks publicly, by other users.");
 
 		CmdTable.AddRow();
-                CmdTable.SetCell("Command","DISABLEPUBLIC");
-                CmdTable.SetCell("Description", "Disables the usage of !showlinks publicly, by other users.");
+        CmdTable.SetCell("Command","DISABLEPUBLIC");
+        CmdTable.SetCell("Description", "Disables the usage of !showlinks publicly, by other users.");
 
 		CmdTable.AddRow();
 		CmdTable.SetCell("Command", "DIRECTORY <#directory>");
@@ -169,8 +183,12 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand)
 		CmdTable.SetCell("Description", "Prints all the settings.");
 
 		CmdTable.AddRow();
-                CmdTable.SetCell("Command", "BUFFERALLLINKS");
-                CmdTable.SetCell("Description", "Toggles the buffering of all links or only image links.");
+        CmdTable.SetCell("Command", "BUFFERALLLINKS");
+        CmdTable.SetCell("Description", "Toggles the buffering of all links or only image links.");
+
+        CmdTable.AddRow();
+        CmdTable.SetCell("Command", "REUPLOAD");
+        CmdTable.SetCell("Description", "Toggles the reuploading of image links to imgur.");
 
 		CmdTable.AddRow();
 		CmdTable.SetCell("Command", "SHOWLINKS <#number>");
@@ -182,15 +200,15 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand)
 
 		PutModule(CmdTable);
 		return;
-	}else if (command == "enable") 
+	} else if (command == "enable") 
 	{
 		SetNV("enable","true",true);
 		PutModule("Enabled buffering");
-	}else if (command == "disable") 
+	} else if (command == "disable") 
 	{
 		SetNV("enable","false",true);
 		PutModule("Disabled buffering");
-	}else if (command == "enablelocal")
+	} else if (command == "enablelocal")
 	{
 		if(GetNV("directory") == "")
 		{
@@ -199,19 +217,19 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand)
 		}
 		SetNV("enablelocal","true",true);
 		PutModule("Enabled local caching");
-	}else if (command == "disablelocal")
+	} else if (command == "disablelocal")
 	{
 		SetNV("enablelocal", "false", true);
 		PutModule("Disabled local caching");
-	}else if (command == "enablepublic")
+	} else if (command == "enablepublic")
 	{
 		SetNV("enablepublic", "true", true);
 		PutModule("Enabled public usage of showlinks.");
-	}else if (command == "disablepublic")
+	} else if (command == "disablepublic")
         {
                 SetNV("enablepublic", "false", true);
                 PutModule("Disabled public usage of showlinks.");
-        }else if (command == "directory") 
+        } else if (command == "directory") 
 	{
 		CString dir=sCommand.Token(1).Replace_n("//", "/").TrimRight_n("/") + "/";
 		if (!isValidDir(dir))
@@ -227,11 +245,11 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand)
 		} 
 		SetNV("directory", dir, true);
 		PutModule("Directory for local caching set to " + GetNV("directory"));
-	}else if (command == "clearbuffer")
+	} else if (command == "clearbuffer")
 	{
 		lastUrls.clear();
 		nicks.clear();
-	}else if (command == "buffersize")
+	} else if (command == "buffersize")
 	{
 		unsigned int bufSize = sCommand.Token(1).ToUInt();
 		if(bufSize==0 || bufSize==UINT_MAX)
@@ -241,16 +259,19 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand)
 		}
 		SetNV("buffersize", CString(bufSize), true);
 		PutModule("Buffer size set to " + GetNV("buffersize")); 
-	}else if (command == "showsettings")
+	} else if (command == "showsettings")
 	{
 		for(MCString::iterator it = BeginNV(); it != EndNV(); it++)
 		{
 			PutModule(it->first.AsUpper() + " : " + it->second);
 		}
-	}else if(command == "bufferalllinks"){
+	} else if(command == "bufferalllinks"){
 		SetNV("bufferalllinks", CString(!GetNV("bufferalllinks").ToBool()), true); 
 		PutModule( CString(GetNV("bufferalllinks").ToBool()?"Enabled":"Disabled") + " buffering of all links.");
-	}else if (command == "showlinks")
+	} else if(command == "reupload"){
+                SetNV("reupload", CString(!GetNV("reupload").ToBool()), true);
+                PutModule( CString(GetNV("reupload").ToBool()?"Enabled":"Disabled") + " buffering of all links.");
+    } else if (command == "showlinks")
 	{
 		 if(lastUrls.empty())
                         PutModule("No links were found...");
@@ -262,11 +283,11 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand)
                               maxLinks = size;
 			unsigned int maxSize = lastUrls.size()-1;
 			for(unsigned int i=0; i<=maxSize && i< maxLinks; i++)
-		        {
+		    {
                 		PutModule(nicks[maxSize-i] + ": " + lastUrls[maxSize-i]);
-        		}
+            }
   		 }
-	}else
+	} else
 	{
 		PutModule("Unknown command! Try HELP.");
 	}
@@ -274,21 +295,18 @@ void CUrlBufferModule::OnModCommand(const CString& sCommand)
 
 void CUrlBufferModule::LoadDefaults() 
 {
-	if(GetNV("enable")==""){
+	if(GetNV("enable")=="")
 		SetNV("enable", "true", true);
-	}
-	if(GetNV("enablelocal")==""){
+	if(GetNV("enablelocal")=="")
 		SetNV("enablelocal", "false", true);
-	}
-	if(GetNV("buffersize")== ""){
+	if(GetNV("buffersize")== "")
 		SetNV("buffersize", "5", true);
-	}
-	if(GetNV("enablepublic")==""){
+	if(GetNV("enablepublic")=="")
 		SetNV("enablepublic", "true", true);
-	}
-	if(GetNV("bufferalllinks")==""){
+	if(GetNV("bufferalllinks")=="")
 		SetNV("bufferalllinks", "false", true);
-	}
+    if(GetNV("reupload")=="")
+        SetNV("reupload", "true", true);    
 }
 
 void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& sOrigin)
@@ -312,7 +330,7 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 				//if it's an image link download/upload it else just keep the link
 				if(isValidExtension( tokens[tokens.size()-1] ))
 				{
-                                        std::stringstream ss;
+                    std::stringstream ss;
 					if( GetNV("enablelocal").ToBool())
 					{
 						CString dir = GetNV("directory") + convertTime("%Y-%m-%d") + "/";
@@ -321,14 +339,14 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 							CDir::MakeDir(dir, 0755);
 						}
 						ss << "wget -b -O " << dir.c_str() << name <<" -q " << word.c_str() << " 2>&1";
-                                                getStdoutFromCommand(ss.str());
+                        getStdoutFromCommand(ss.str());
 					}
 					ss.str("");
-					if (!word.WildCmp("*imgur*")) {
+					if (!word.WildCmp("*imgur*") && GetNV("reupload").ToBool()) {
 						ss << "curl -d \"image=" << word.c_str() << "\" -d \"key=5ce86e7f95d8e58b18931bf290f387be\" http://api.imgur.com/2/upload.xml | sed -n 's/.*<original>\\(.*\\)<\\/original>.*/\\1/p' 2>&1";
 						output = getStdoutFromCommand(ss.str());
 						lastUrls.push_back(output);
-					}else {
+					} else {
 						lastUrls.push_back(word);
 					}
 				} else if(GetNV("bufferalllinks").ToBool()){
