@@ -35,3 +35,4 @@ Module commands:
  * `/msg *urlbuffer showsettings` displays all the current settings.
  * `/msg *urlbuffer showlinks <#number>` displays the `<#number>` last links.
  * `/msg *urlbuffer bufferalllinks` toggles between the buffering of all links and only images.
+ * `/msg *urlbuffer reupload` toggles reuploading of images to imgur.
