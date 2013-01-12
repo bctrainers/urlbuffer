@@ -394,8 +394,7 @@ void CUrlBufferModule::CheckLineForTrigger(const CString& sMessage, const CStrin
 
 template<> void TModInfo<CUrlBufferModule>(CModInfo& Info) {
     Info.SetWikiPage("urlbuffer");
-    Info.SetHasArgs(true);
-    Info.SetArgsHelpText("");
+    Info.SetHasArgs(false);
 }
 
 
