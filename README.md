@@ -10,7 +10,7 @@ The module needs wget, sed, curl, a unix enviroment and a directory with write a
 
 Compile it with 
 `znc-buildmod urlbuffer.cpp` 
-and move the .so file to the appropriate znc directory (usually /usr/lib/znc/).
+and move the .so file to the appropriate znc directory (usually /usr/lib/znc/ or ~/.znc/modules).
 
 The module takes no arguments.
 Read [loading modules](http://wiki.znc.in/Modules#.28Un.29Loading_Modules) to learn more about loading modules. 

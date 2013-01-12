@@ -8,13 +8,12 @@
 * by the Free Software Foundation (http://www.gnu.org/licenses/gpl.txt).
 */ 
 
-#include "main.h"
-#include "User.h"
-#include "Nick.h"
-#include "Modules.h"
-#include "Chan.h" 
-#include "FileUtils.h"
-#include <pthread.h>
+#include <znc/Client.h>
+#include <znc/Chan.h>
+#include <znc/User.h>
+#include <znc/Modules.h>
+#include <znc/FileUtils.h>
+#include <znc/IRCNetwork.h>
 #include <climits>
 
 #define MAX_EXTS 6
@@ -26,14 +25,8 @@ private:
     /* Vectors containing the last urls posted + the nicknames of the users posting them. */
 	VCString lastUrls, nicks;
 	
-    /* Holds the number of links to be posted when the "!showlinks <num>" command is issued. */
-	unsigned int linkNum;
-
-    /* The user that requested the last links posted. */ 
-	CString target;
-
     /* Supported file extensions in links that should be downloaded. */
-	static const string supportedExts[MAX_EXTS];
+	static const CString supportedExts[MAX_EXTS];
 	
     /* Unsupported characters that should be ignored when found in strings describing file directories. */
     static const char unSupportedChars[MAX_CHARS];
@@ -44,23 +37,6 @@ private:
     /* Load the default options if no other were found. */
     inline void LoadDefaults();
 	
-    inline CString convertTime(const CString& str)
-	{
-		time_t curtime;
-		tm* timeinfo;
-		char buffer[1024];
-
-		time(&curtime);
-		curtime += (time_t) (m_pUser->GetTimezoneOffset() * 60 * 60);
-		timeinfo = localtime(&curtime);
-
-		if (!strftime(buffer, sizeof(buffer), str.c_str(), timeinfo))
-		{
-			return "";
-		}
-		return CString(buffer);
-	}
-
 	inline bool isValidExtension(CString ext)
 	{
 		ext.MakeLower();
@@ -72,16 +48,16 @@ private:
 		return false;
 	}
 
-	inline bool isValidDir(const string& dir)
+	inline bool isValidDir(const CString& dir)
 	{
 		for(int i=0; i< MAX_CHARS; i++)
 		{
-			if (dir.find(unSupportedChars[i]) !=string::npos)
+			if (dir.find(unSupportedChars[i]) !=CString::npos)
 				return false;
 		}
 		return true;
 	}
-	static void* sendLinks(void *ptr);
+	
 	inline void CheckLineForLink(const CString& sMessage, const CString& sOrigin);
 	inline void CheckLineForTrigger(const CString& sMessage, const CString& sTarget); 
 public:
@@ -96,7 +72,7 @@ public:
 	
 };
 
-const string CUrlBufferModule::supportedExts[MAX_EXTS] = 
+const CString CUrlBufferModule::supportedExts[MAX_EXTS] = 
 				{"jpg", "png", "gif", "jpeg", "bmp", "tiff"} ;
 
 const char CUrlBufferModule::unSupportedChars[MAX_CHARS] = 
@@ -113,7 +89,7 @@ CUrlBufferModule::~CUrlBufferModule() {}
 CUrlBufferModule::EModRet CUrlBufferModule::OnUserMsg(CString& sTarget, CString& sMessage) 
 {
 	CheckLineForLink(sMessage, "");
-	CheckLineForTrigger(sMessage, m_pUser->GetIRCNick().GetNick());
+	CheckLineForTrigger(sMessage, m_pUser->GetUserName() );
 	return CONTINUE;
 }
 
@@ -311,7 +287,7 @@ void CUrlBufferModule::LoadDefaults()
 
 void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& sOrigin)
 {
-	if(sOrigin != m_pUser->GetIRCNick().GetNick() && GetNV("enable").ToBool() )
+	if(sOrigin != m_pUser->GetUserName() && GetNV("enable").ToBool() )
 	{	
 		VCString words;
 		CString output;
@@ -324,16 +300,19 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 				//if you find an image download it, save it in the www directory and keep the new link in buffer
 				VCString tokens;
 				word.Split("/", tokens, false, "", "", true, true);
-				string name = tokens[tokens.size()-1];
+				CString name = tokens[tokens.size()-1];
 				word.Split(".", tokens, false, "", "", true, true);
 
 				//if it's an image link download/upload it else just keep the link
 				if(isValidExtension( tokens[tokens.size()-1] ))
 				{
+
                     std::stringstream ss;
 					if( GetNV("enablelocal").ToBool())
 					{
-						CString dir = GetNV("directory") + convertTime("%Y-%m-%d") + "/";
+                        time_t curtime;
+                        time(&curtime);
+						CString dir = GetNV("directory") + CUtils::FormatTime(curtime,"%Y-%m-%d", m_pUser->GetTimezone()) + "/";
 						if(!CFile::Exists(dir) && !CFile::IsDir(dir, false))
 						{
 							CDir::MakeDir(dir, 0755);
@@ -352,7 +331,7 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 				} else if(GetNV("bufferalllinks").ToBool()){
 					lastUrls.push_back(word); 
 				}
-                                nicks.push_back( (sOrigin.empty())? m_pUser->GetIRCNick().GetNick() : sOrigin );
+                                nicks.push_back( (sOrigin.empty())? m_pUser->GetUserName() : sOrigin );
 			}
 		}
 	}
@@ -360,7 +339,7 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 
 CString CUrlBufferModule::getStdoutFromCommand(const CString& cmd) 
 {
-	string data="";
+	CString data="";
 	char buffer[128];
 	FILE* stream = popen(cmd.c_str(), "r");
 	if (stream == NULL || !stream || ferror(stream))
@@ -376,21 +355,6 @@ CString CUrlBufferModule::getStdoutFromCommand(const CString& cmd)
 	return data;
 }
 
-void *CUrlBufferModule::sendLinks(void *ptr)
-{
-	CUrlBufferModule *caller = static_cast<CUrlBufferModule*> (ptr);
-	VCString links = caller->lastUrls;
-        VCString nicks = caller->nicks;
-	unsigned int maxSize = links.size()-1;
-
-	for(unsigned int i=0; i<=maxSize && i<caller->linkNum; i++)
-	{
-		sleep(2);
-		caller->PutIRC("PRIVMSG " + caller->target + " :" + nicks[maxSize-i] + ": "+ links[maxSize-i]);
-	}
-	return NULL;
-}
-
 void CUrlBufferModule::CheckLineForTrigger(const CString& sMessage, const CString& sTarget)
 {
 	if(GetNV("enablepublic").ToBool())
@@ -399,7 +363,7 @@ void CUrlBufferModule::CheckLineForTrigger(const CString& sMessage, const CStrin
 		sMessage.Split(" ", words, false, "", "", true, true);
 		for (size_t a = 0; a < words.size(); a++) 
 		{
-			CString& word = words[a];	
+			CString& word = words[a];
 			if(word.AsLower() == "!showlinks")
 			{
 				if(lastUrls.empty())
@@ -414,19 +378,25 @@ void CUrlBufferModule::CheckLineForTrigger(const CString& sMessage, const CStrin
 						if(size!=0 && size<UINT_MAX) //if it was a valid number
 							maxLinks = size;
 					}
-					linkNum = maxLinks;
-					target = sTarget;
+                                        
+                    unsigned int maxSize = lastUrls.size()-1;
+                    for(unsigned int i=0; i<=maxSize && i<maxLinks; i++)
+                    {
+                          sleep(1);
+                          PutIRC("PRIVMSG " + sTarget + " :" + nicks[maxSize-i] + ": "+ lastUrls[maxSize-i]);
+                    }
 
-					pthread_t thread;
-                                        pthread_attr_t attr;
-                                        pthread_attr_init(&attr);
-                                        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-					pthread_create( &thread, &attr, &sendLinks, this);
 				}
 			}
 		}
 	}
 }
 
-MODULEDEFS(CUrlBufferModule, "Module that caches locally images/links posted on irc channels.")
+template<> void TModInfo<CUrlBufferModule>(CModInfo& Info) {
+    Info.SetWikiPage("urlbuffer");
+    Info.SetHasArgs(true);
+    Info.SetArgsHelpText("");
+}
 
+
+USERMODULEDEFS(CUrlBufferModule, "Module that caches locally images/links posted on irc channels.")
