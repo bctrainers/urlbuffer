@@ -15,6 +15,7 @@
 #include <znc/FileUtils.h>
 #include <znc/IRCNetwork.h>
 #include <climits>
+#include<fstream>
 
 #define MAX_EXTS 6
 #define MAX_CHARS 16
@@ -304,19 +305,21 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 				word.Split(".", tokens, false, "", "", true, true);
 
 				//if it's an image link download/upload it else just keep the link
+                time_t curtime;
+                time(&curtime);
+                CString dir = GetNV("directory") + CUtils::FormatTime(curtime,"%Y-%m-%d", m_pUser->GetTimezone()) + "/";
+                CString nickname = (sOrigin.empty())? m_pUser->GetUserName() : sOrigin;
+                if(!CFile::Exists(dir) && !CFile::IsDir(dir, false))
+                {
+                        CDir::MakeDir(dir, 0775);
+                }
+
 				if(isValidExtension( tokens[tokens.size()-1] ))
 				{
 
                     std::stringstream ss;
 					if( GetNV("enablelocal").ToBool())
 					{
-                        time_t curtime;
-                        time(&curtime);
-						CString dir = GetNV("directory") + CUtils::FormatTime(curtime,"%Y-%m-%d", m_pUser->GetTimezone()) + "/";
-						if(!CFile::Exists(dir) && !CFile::IsDir(dir, false))
-						{
-							CDir::MakeDir(dir, 0755);
-						}
 						ss << "wget -b -O " << dir.c_str() << name <<" -q " << word.c_str() << " 2>&1";
                         getStdoutFromCommand(ss.str());
 					}
@@ -329,9 +332,13 @@ void CUrlBufferModule::CheckLineForLink(const CString& sMessage, const CString& 
 						lastUrls.push_back(word);
 					}
 				} else if(GetNV("bufferalllinks").ToBool()){
-					lastUrls.push_back(word); 
+					lastUrls.push_back(word);
+                    //append nick:link to file
+                    CString filename = dir + "links.txt";
+                    std::ofstream log(filename.c_str() , std::ios_base::app | std::ios_base::out);
+                    log << nickname << ": " << word << "\n"; 
 				}
-                                nicks.push_back( (sOrigin.empty())? m_pUser->GetUserName() : sOrigin );
+                                nicks.push_back( nickname );
 			}
 		}
 	}
